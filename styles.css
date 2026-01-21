@@ -58,6 +58,76 @@ header h1 {
     margin-bottom: 30px;
 }
 
+/* Mode Selector Styles */
+.mode-selector {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.mode-btn {
+    padding: 12px 20px;
+    border: 2px solid #667eea;
+    border-radius: 8px;
+    background: white;
+    color: #667eea;
+    font-size: 0.95em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    flex: 1;
+    min-width: 200px;
+    text-align: center;
+}
+
+.mode-btn:hover {
+    background: #f0f4ff;
+}
+
+.mode-btn.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-color: transparent;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.mode-btn.active:hover {
+    background: linear-gradient(135deg, #5568d3 0%, #6a4190 100%);
+}
+
+.swing-method-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    flex-wrap: wrap;
+}
+
+.swing-method-container label {
+    font-weight: 600;
+    color: #333;
+}
+
+.swing-method-container select {
+    padding: 10px 15px;
+    border: 2px solid #667eea;
+    border-radius: 6px;
+    font-size: 0.95em;
+    background: white;
+    color: #333;
+    cursor: pointer;
+    min-width: 280px;
+}
+
+.swing-method-container select:focus {
+    outline: none;
+    border-color: #764ba2;
+}
+
 .info-box {
     background: #f0f4ff;
     padding: 15px;
@@ -486,4 +556,472 @@ h3 {
 
 .hidden {
     display: none !important;
+}
+
+/* Direktmandate Cell Styles */
+.direktmandate-cell {
+    text-align: center;
+}
+
+.direktmandate-value {
+    display: inline-block;
+    background: #667eea;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: bold;
+    font-size: 1.1em;
+    min-width: 40px;
+}
+
+.direktmandate-placeholder {
+    display: inline-block;
+    background: #e0e0e0;
+    color: #666;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 0.85em;
+    font-style: italic;
+}
+
+/* Prognose Section Styles */
+.prognose-section {
+    margin-top: 30px;
+    padding-top: 30px;
+    border-top: 2px solid #e0e0e0;
+}
+
+.prognose-controls {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.swing-selector {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+
+.swing-selector label {
+    font-weight: 600;
+    color: #333;
+}
+
+.swing-selector select {
+    padding: 10px 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 1em;
+    background: white;
+    cursor: pointer;
+    min-width: 300px;
+}
+
+.swing-selector select:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.method-info {
+    cursor: help;
+    color: #667eea;
+    font-size: 1.2em;
+}
+
+.method-description {
+    background: #e8f0fe;
+    padding: 12px 15px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    border-left: 4px solid #667eea;
+    font-size: 0.9em;
+}
+
+.method-description p {
+    margin: 0;
+    color: #444;
+}
+
+.method-description em {
+    font-family: 'Courier New', monospace;
+    background: rgba(0,0,0,0.05);
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+.prognose-summary {
+    background: white;
+    border: 2px solid #667eea;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.prognose-summary h3 {
+    margin-top: 0;
+    color: #667eea;
+}
+
+.mandate-overview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.mandate-card {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 15px 20px;
+    min-width: 120px;
+    text-align: center;
+    border-left: 4px solid #888;
+    transition: transform 0.2s;
+}
+
+.mandate-card:hover {
+    transform: translateY(-2px);
+}
+
+.mandate-card.party-cdu { border-left-color: #000000; }
+.mandate-card.party-gruene { border-left-color: #64a12d; }
+.mandate-card.party-spd { border-left-color: #e3000f; }
+.mandate-card.party-afd { border-left-color: #009ee0; }
+.mandate-card.party-fdp { border-left-color: #ffed00; }
+.mandate-card.party-linke { border-left-color: #be3075; }
+
+.mandate-card .party-name {
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: #333;
+}
+
+.mandate-card .mandate-count {
+    font-size: 2em;
+    font-weight: bold;
+    color: #667eea;
+}
+
+.mandate-card .mandate-change {
+    font-size: 0.85em;
+    margin-top: 5px;
+}
+
+.mandate-card .mandate-change.positive {
+    color: #28a745;
+}
+
+.mandate-card .mandate-change.negative {
+    color: #dc3545;
+}
+
+.mandate-card .mandate-change.neutral {
+    color: #666;
+}
+
+.prognose-changes {
+    background: #fff3cd;
+    padding: 10px 15px;
+    border-radius: 6px;
+    font-size: 0.9em;
+    color: #856404;
+}
+
+.wahlkreis-details {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 15px 20px;
+}
+
+.wahlkreis-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.wahlkreis-header h3 {
+    margin: 0;
+}
+
+.wahlkreis-list {
+    max-height: 500px;
+    overflow-y: auto;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    background: white;
+}
+
+.wahlkreis-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background 0.2s;
+}
+
+.wahlkreis-item:last-child {
+    border-bottom: none;
+}
+
+.wahlkreis-item:hover {
+    background: #f8f9ff;
+}
+
+.wahlkreis-item.changed {
+    background: #fff8e6;
+}
+
+.wahlkreis-item.changed:hover {
+    background: #fff3cd;
+}
+
+.wahlkreis-info {
+    flex: 1;
+}
+
+.wahlkreis-name {
+    font-weight: 600;
+    color: #333;
+}
+
+.wahlkreis-id {
+    font-size: 0.85em;
+    color: #666;
+    margin-left: 8px;
+}
+
+.wahlkreis-result {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.wahlkreis-winner {
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.9em;
+    color: white;
+}
+
+.wahlkreis-winner.party-cdu { background: #000000; }
+.wahlkreis-winner.party-gruene { background: #64a12d; }
+.wahlkreis-winner.party-spd { background: #e3000f; }
+.wahlkreis-winner.party-afd { background: #009ee0; }
+.wahlkreis-winner.party-fdp { background: #ffed00; color: #333; }
+.wahlkreis-winner.party-linke { background: #be3075; }
+
+.wahlkreis-margin {
+    font-size: 0.85em;
+    color: #666;
+    min-width: 80px;
+    text-align: right;
+}
+
+.wahlkreis-change {
+    font-size: 0.8em;
+    padding: 2px 8px;
+    border-radius: 3px;
+    background: #dc3545;
+    color: white;
+}
+
+/* Wahlkreis Modal Styles */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal.hidden {
+    display: none;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 12px;
+    max-width: 700px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 25px;
+    border-bottom: 2px solid #667eea;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 12px 12px 0 0;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.3em;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 2em;
+    color: white;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+}
+
+.modal-close:hover {
+    opacity: 1;
+}
+
+.modal-body {
+    padding: 25px;
+}
+
+.comparison-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 25px;
+}
+
+.comparison-column {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.comparison-column h4 {
+    margin: 0 0 15px 0;
+    color: #667eea;
+    font-size: 1.1em;
+    text-align: center;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.ergebnis-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.ergebnis-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.ergebnis-party {
+    width: 60px;
+    font-weight: 600;
+    font-size: 0.9em;
+}
+
+.ergebnis-bar-container {
+    flex: 1;
+    height: 24px;
+    background: #e0e0e0;
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+}
+
+.ergebnis-bar {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.ergebnis-bar.party-cdu { background: #000000; }
+.ergebnis-bar.party-gruene { background: #64a12d; }
+.ergebnis-bar.party-spd { background: #e3000f; }
+.ergebnis-bar.party-afd { background: #009ee0; }
+.ergebnis-bar.party-fdp { background: #ffed00; }
+.ergebnis-bar.party-linke { background: #be3075; }
+
+.ergebnis-value {
+    width: 50px;
+    text-align: right;
+    font-weight: 600;
+    font-size: 0.9em;
+}
+
+.gewinner-info {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 2px solid #e0e0e0;
+    text-align: center;
+    font-size: 1em;
+}
+
+.gewinner-info span {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 4px;
+    color: white;
+    font-weight: 600;
+    margin-left: 8px;
+}
+
+.gewinner-info span.party-cdu { background: #000000; }
+.gewinner-info span.party-gruene { background: #64a12d; }
+.gewinner-info span.party-spd { background: #e3000f; }
+.gewinner-info span.party-afd { background: #009ee0; }
+.gewinner-info span.party-fdp { background: #ffed00; color: #333; }
+.gewinner-info span.party-linke { background: #be3075; }
+
+.wahlkreis-item {
+    cursor: pointer;
+}
+
+.wahlkreis-item:hover {
+    background: #e8f0fe;
+}
+
+@media (max-width: 768px) {
+    .comparison-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .swing-selector {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .swing-selector select {
+        min-width: 100%;
+    }
+    
+    .mandate-overview {
+        justify-content: center;
+    }
+    
+    .wahlkreis-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .wahlkreis-result {
+        width: 100%;
+        justify-content: space-between;
+    }
 }

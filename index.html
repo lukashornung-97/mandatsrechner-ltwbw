@@ -16,8 +16,26 @@
 
         <div class="input-section">
             <h2>Eingabe</h2>
+            
+            <div class="mode-selector">
+                <button id="mode-manual" class="mode-btn active" onclick="setMode('manual')">
+                    Manuelle Eingabe Direktmandate
+                </button>
+                <button id="mode-auto" class="mode-btn" onclick="setMode('auto')">
+                    Projektion der Direktmandate auf Basis des Wahlergebnis
+                </button>
+            </div>
+            <div id="swing-method-container" class="swing-method-container" style="display: none;">
+                <label for="swing-method">Berechnungsmethode:</label>
+                <select id="swing-method">
+                    <option value="proportional">Proportionaler Swing (verhältnismäßig)</option>
+                    <option value="uniform">Uniform Swing (gleichmäßige Verschiebung)</option>
+                </select>
+                <button id="calculate-direktmandate-btn" class="btn-primary" onclick="autoCalculateDirektmandate()">Berechnen</button>
+            </div>
+            
             <div class="info-box">
-                <p><strong>Landtag:</strong> Mindestgröße 120 Sitze | <strong>Direktmandate:</strong> 70</p>
+                <p id="mode-info"><strong>Landtag:</strong> Mindestgröße 120 Sitze | <strong>Direktmandate:</strong> 70</p>
             </div>
             
             <table id="party-table" class="input-table">
@@ -88,8 +106,76 @@
                 </div>
             </div>
         </div>
+
+        <div class="prognose-section">
+            <h2>Wahlkreis-Details</h2>
+            <div class="info-box">
+                <p><strong>Hochrechnung:</strong> Die Direktmandate werden basierend auf den Wahlergebnissen 2021 und Ihren Umfragewerten berechnet.</p>
+            </div>
+            
+            <div class="prognose-controls">
+                <div class="method-description" id="method-description">
+                    <p><strong>Proportionaler Swing:</strong> Die Veränderung wird verhältnismäßig zum bisherigen Ergebnis angewendet.<br>
+                    <em>Prognose = Ergebnis 2021 × (Umfrage / Landesergebnis 2021)</em></p>
+                </div>
+                <button id="calculate-prognose-btn" class="btn-primary">Wahlkreis-Details anzeigen</button>
+            </div>
+
+            <div id="prognose-summary" class="prognose-summary hidden">
+                <h3>Direktmandate-Verteilung</h3>
+                <div id="prognose-mandate-overview" class="mandate-overview">
+                    <!-- Übersicht wird hier eingefügt -->
+                </div>
+                <div class="prognose-changes">
+                    <span id="prognose-changes-text"></span>
+                </div>
+            </div>
+
+            <div id="wahlkreis-details" class="wahlkreis-details hidden">
+                <div class="wahlkreis-header">
+                    <h3>Alle 70 Wahlkreise</h3>
+                    <button id="toggle-wahlkreise-btn" class="btn-secondary">Details anzeigen ▼</button>
+                </div>
+                <div id="wahlkreis-list" class="wahlkreis-list hidden">
+                    <!-- Wahlkreis-Liste wird hier eingefügt -->
+                </div>
+            </div>
+        </div>
     </div>
 
+    <!-- Wahlkreis Detail Modal -->
+    <div id="wahlkreis-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-wahlkreis-name">Wahlkreis</h3>
+                <button class="modal-close" onclick="closeWahlkreisModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="comparison-container">
+                    <div class="comparison-column">
+                        <h4>Ergebnis 2021</h4>
+                        <div id="modal-ergebnis-2021" class="ergebnis-bars">
+                            <!-- 2021 Ergebnisse -->
+                        </div>
+                        <div class="gewinner-info">
+                            <strong>Gewinner:</strong> <span id="modal-gewinner-2021"></span>
+                        </div>
+                    </div>
+                    <div class="comparison-column">
+                        <h4>Prognose 2026</h4>
+                        <div id="modal-ergebnis-2026" class="ergebnis-bars">
+                            <!-- 2026 Prognose -->
+                        </div>
+                        <div class="gewinner-info">
+                            <strong>Gewinner:</strong> <span id="modal-gewinner-2026"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="wahlkreise2021.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

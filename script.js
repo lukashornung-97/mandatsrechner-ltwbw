@@ -13,17 +13,62 @@ const DIRECT_MANDATES_TOTAL = 70;
 const THRESHOLD_PERCENT = 5;
 
 let parties = [];
+let currentMode = 'manual'; // 'manual' oder 'auto'
+let hasCalculated = false; // Wurde im Auto-Modus schon berechnet?
 
-// Initialize default parties
+// Initialize default parties with current polling values
 function initParties() {
     parties = [
-        { name: 'CDU', percentage: 25, directMandates: 50 },
-        { name: 'Grüne', percentage: 20, directMandates: 16 },
+        { name: 'CDU', percentage: 28, directMandates: 0 },
+        { name: 'AfD', percentage: 24, directMandates: 0 },
+        { name: 'Grüne', percentage: 20, directMandates: 0 },
         { name: 'SPD', percentage: 10, directMandates: 0 },
-        { name: 'AfD', percentage: 20, directMandates: 4 },
         { name: 'FDP', percentage: 5, directMandates: 0 },
         { name: 'Linke', percentage: 5, directMandates: 0 }
     ];
+    renderPartyTable();
+}
+
+// Wechsle zwischen Manuell und Auto-Modus
+function setMode(mode) {
+    currentMode = mode;
+    
+    // Bei Moduswechsel: hasCalculated zurücksetzen
+    if (mode === 'auto') {
+        hasCalculated = false;
+    }
+    
+    // Update Button-Styling
+    document.getElementById('mode-manual').classList.toggle('active', mode === 'manual');
+    document.getElementById('mode-auto').classList.toggle('active', mode === 'auto');
+    
+    // Update Info-Text
+    const modeInfo = document.getElementById('mode-info');
+    if (mode === 'manual') {
+        modeInfo.innerHTML = '<strong>Landtag:</strong> Mindestgröße 120 Sitze | <strong>Direktmandate:</strong> 70 (manuelle Eingabe)';
+    } else {
+        modeInfo.innerHTML = '<strong>Landtag:</strong> Mindestgröße 120 Sitze | <strong>Direktmandate:</strong> 70 (automatisch aus Wahlergebnis 2021 hochgerechnet)';
+    }
+    
+    // Prognose-Section nur im Auto-Modus anzeigen
+    const prognoseSection = document.querySelector('.prognose-section');
+    if (prognoseSection) {
+        prognoseSection.style.display = mode === 'auto' ? 'block' : 'none';
+    }
+    
+    // Swing-Methode Selector anzeigen/verstecken
+    const swingSelector = document.getElementById('swing-method-container');
+    if (swingSelector) {
+        swingSelector.style.display = mode === 'auto' ? 'flex' : 'none';
+    }
+    
+    // "Sitzverteilung berechnen" Button im Auto-Modus ausblenden
+    const calculateBtn = document.getElementById('calculate-btn');
+    if (calculateBtn) {
+        calculateBtn.style.display = mode === 'auto' ? 'none' : 'inline-block';
+    }
+    
+    // Tabelle neu rendern
     renderPartyTable();
 }
 
@@ -32,8 +77,46 @@ function renderPartyTable() {
     const tbody = document.getElementById('party-tbody');
     tbody.innerHTML = '';
     
+    // Update Tabellen-Header je nach Modus
+    const headerRow = document.querySelector('#party-table thead tr');
+    if (headerRow) {
+        const headers = headerRow.querySelectorAll('th');
+        if (headers.length >= 3) {
+            headers[1].textContent = currentMode === 'auto' ? 'Umfragewert (%)' : 'Zweitstimmen (%)';
+            headers[2].textContent = currentMode === 'auto' ? 'Direktmandate (berechnet)' : 'Direktmandate';
+        }
+    }
+    
     parties.forEach((party, index) => {
         const row = document.createElement('tr');
+        
+        // Direktmandate-Zelle je nach Modus
+        let direktmandateCell;
+        if (currentMode === 'manual') {
+            direktmandateCell = `
+                <td>
+                    <input type="number" 
+                           step="1" 
+                           min="0" 
+                           max="70"
+                           value="${party.directMandates}" 
+                           data-index="${index}" 
+                           data-field="directMandates"
+                           placeholder="0"
+                           oninput="validateDirectMandateInput(this)">
+                </td>
+            `;
+        } else {
+            // Im Auto-Modus: Zeige Platzhalter bis berechnet wurde
+            const displayValue = hasCalculated ? party.directMandates : '–';
+            const cellClass = hasCalculated ? 'direktmandate-value' : 'direktmandate-placeholder';
+            direktmandateCell = `
+                <td class="direktmandate-cell">
+                    <span class="${cellClass}" id="direktmandate-${index}">${displayValue}</span>
+                </td>
+            `;
+        }
+        
         row.innerHTML = `
             <td class="party-name">${party.name}</td>
             <td>
@@ -47,17 +130,7 @@ function renderPartyTable() {
                        placeholder="0.0"
                        oninput="validatePercentageInput(this)">
             </td>
-            <td>
-                <input type="number" 
-                       step="1" 
-                       min="0" 
-                       max="70"
-                       value="${party.directMandates}" 
-                       data-index="${index}" 
-                       data-field="directMandates"
-                       placeholder="0"
-                       oninput="validateDirectMandateInput(this)">
-            </td>
+            ${direktmandateCell}
             <td>
                 <button class="btn-secondary" onclick="removeParty(${index})" style="padding: 6px 12px; font-size: 0.9em;">Entfernen</button>
             </td>
@@ -114,10 +187,18 @@ function validatePercentageInput(input) {
     
     parties[index].percentage = Math.max(0, value);
     updateValidationMessage();
+    
+    // Im Auto-Modus: Berechnung zurücksetzen wenn Werte geändert werden
+    if (currentMode === 'auto' && hasCalculated) {
+        hasCalculated = false;
+        renderPartyTable();
+    }
 }
 
-// Validate direct mandate input in real-time
+// Validate direct mandate input in real-time (nur im manuellen Modus)
 function validateDirectMandateInput(input) {
+    if (currentMode !== 'manual') return;
+    
     const index = parseInt(input.dataset.index);
     let value = parseInt(input.value) || 0;
     
@@ -692,6 +773,382 @@ function calculateSelectedCoalition(partyData, totalSeats) {
     resultsContainer.appendChild(card);
 }
 
+// ==========================================
+// WAHLKREIS-PROGNOSE FUNKTIONEN
+// ==========================================
+
+let prognoseResults = null;
+
+// Berechnung der Direktmandate basierend auf Wahlkreis-Ergebnissen
+function autoCalculateDirektmandate() {
+    if (currentMode !== 'auto') return;
+    
+    // Hole die aktuell gewählte Methode
+    const methodSelect = document.getElementById('swing-method');
+    if (!methodSelect) return;
+    
+    const method = document.getElementById('swing-method')?.value || 'uniform';
+    
+    // Hole aktuelle Umfragewerte
+    const umfrageWerte = {};
+    parties.forEach(party => {
+        umfrageWerte[party.name] = party.percentage || 0;
+    });
+    
+    // Initialisiere Mandatezähler
+    const mandateCount = {};
+    parties.forEach(party => {
+        mandateCount[party.name] = 0;
+    });
+    
+    // Berechne für jeden Wahlkreis den Gewinner
+    WAHLKREISE_2021.forEach(wahlkreis => {
+        let gewinner = null;
+        let maxWert = 0;
+        
+        Object.keys(wahlkreis.erststimmen).forEach(party => {
+            const ergebnis2021 = wahlkreis.erststimmen[party];
+            const umfrage = umfrageWerte[party] || 0;
+            const landesergebnis = LANDESERGEBNIS_2021[party] || 0;
+            
+            let prognose;
+            if (method === 'uniform') {
+                prognose = Math.max(0, ergebnis2021 + (umfrage - landesergebnis));
+            } else {
+                prognose = landesergebnis > 0 ? Math.max(0, ergebnis2021 * (umfrage / landesergebnis)) : ergebnis2021;
+            }
+            
+            if (prognose > maxWert) {
+                maxWert = prognose;
+                gewinner = party;
+            }
+        });
+        
+        if (gewinner && mandateCount.hasOwnProperty(gewinner)) {
+            mandateCount[gewinner]++;
+        }
+    });
+    
+    // Update parties array und Anzeige
+    parties.forEach((party, index) => {
+        party.directMandates = mandateCount[party.name] || 0;
+        const cell = document.getElementById(`direktmandate-${index}`);
+        if (cell) {
+            cell.textContent = party.directMandates;
+            cell.className = 'direktmandate-value';
+        }
+    });
+    
+    hasCalculated = true;
+    updateValidationMessage();
+    
+    // Im Auto-Modus auch direkt die Sitzverteilung berechnen
+    calculateSeats();
+}
+
+// Uniform Swing: Prognose = Ergebnis2021 + (Umfrage - Landesergebnis2021)
+function calculateUniformSwing(wahlkreisErgebnis, umfrageWert, landesergebnis2021) {
+    const swing = umfrageWert - landesergebnis2021;
+    return Math.max(0, wahlkreisErgebnis + swing);
+}
+
+// Proportionaler Swing: Prognose = Ergebnis2021 * (Umfrage / Landesergebnis2021)
+function calculateProportionalSwing(wahlkreisErgebnis, umfrageWert, landesergebnis2021) {
+    if (landesergebnis2021 === 0) return wahlkreisErgebnis;
+    const factor = umfrageWert / landesergebnis2021;
+    return Math.max(0, wahlkreisErgebnis * factor);
+}
+
+// Berechne Prognose für alle Wahlkreise
+function calculateWahlkreisPrognose() {
+    const method = document.getElementById('swing-method').value;
+    
+    // Hole aktuelle Umfragewerte aus der Eingabe
+    const umfrageWerte = {};
+    parties.forEach(party => {
+        umfrageWerte[party.name] = party.percentage || 0;
+    });
+    
+    const results = [];
+    const mandateCount = {};
+    let changedWahlkreise = 0;
+    
+    // Initialisiere Mandatezähler
+    Object.keys(PARTY_CONFIG).forEach(party => {
+        mandateCount[party] = 0;
+    });
+    
+    // Berechne für jeden Wahlkreis
+    WAHLKREISE_2021.forEach(wahlkreis => {
+        const prognoseErgebnisse = {};
+        
+        // Berechne Prognose für jede Partei
+        Object.keys(wahlkreis.erststimmen).forEach(party => {
+            const ergebnis2021 = wahlkreis.erststimmen[party];
+            const umfrage = umfrageWerte[party] || 0;
+            const landesergebnis = LANDESERGEBNIS_2021[party] || 0;
+            
+            if (method === 'uniform') {
+                prognoseErgebnisse[party] = calculateUniformSwing(ergebnis2021, umfrage, landesergebnis);
+            } else {
+                prognoseErgebnisse[party] = calculateProportionalSwing(ergebnis2021, umfrage, landesergebnis);
+            }
+        });
+        
+        // Finde Gewinner
+        let gewinner = null;
+        let maxWert = 0;
+        let zweitbester = 0;
+        
+        Object.entries(prognoseErgebnisse).forEach(([party, wert]) => {
+            if (wert > maxWert) {
+                zweitbester = maxWert;
+                maxWert = wert;
+                gewinner = party;
+            } else if (wert > zweitbester) {
+                zweitbester = wert;
+            }
+        });
+        
+        const vorsprung = maxWert - zweitbester;
+        const hasChanged = gewinner !== wahlkreis.gewinner2021;
+        
+        if (hasChanged) changedWahlkreise++;
+        
+        // Zähle Mandate
+        if (gewinner && mandateCount.hasOwnProperty(gewinner)) {
+            mandateCount[gewinner]++;
+        }
+        
+        results.push({
+            id: wahlkreis.id,
+            name: wahlkreis.name,
+            gewinner2021: wahlkreis.gewinner2021,
+            gewinnerPrognose: gewinner,
+            vorsprung: vorsprung,
+            hasChanged: hasChanged,
+            prognoseErgebnisse: prognoseErgebnisse
+        });
+    });
+    
+    prognoseResults = {
+        wahlkreise: results,
+        mandateCount: mandateCount,
+        changedWahlkreise: changedWahlkreise
+    };
+    
+    displayPrognoseResults();
+}
+
+// Zeige Prognose-Ergebnisse an
+function displayPrognoseResults() {
+    if (!prognoseResults) return;
+    
+    const summarySection = document.getElementById('prognose-summary');
+    const mandateOverview = document.getElementById('prognose-mandate-overview');
+    const changesText = document.getElementById('prognose-changes-text');
+    const wahlkreisDetails = document.getElementById('wahlkreis-details');
+    const wahlkreisList = document.getElementById('wahlkreis-list');
+    
+    summarySection.classList.remove('hidden');
+    wahlkreisDetails.classList.remove('hidden');
+    
+    // Mandate-Übersicht
+    mandateOverview.innerHTML = '';
+    
+    // Sortiere Parteien nach Mandatezahl
+    const sortedParties = Object.entries(prognoseResults.mandateCount)
+        .filter(([party, count]) => count > 0 || DIREKTMANDATE_2021[party] > 0)
+        .sort((a, b) => b[1] - a[1]);
+    
+    sortedParties.forEach(([party, count]) => {
+        const diff = count - (DIREKTMANDATE_2021[party] || 0);
+        const partyConfig = PARTY_CONFIG[party] || { color: 'party-other' };
+        
+        let changeClass = 'neutral';
+        let changeText = '±0';
+        if (diff > 0) {
+            changeClass = 'positive';
+            changeText = `+${diff}`;
+        } else if (diff < 0) {
+            changeClass = 'negative';
+            changeText = `${diff}`;
+        }
+        
+        const card = document.createElement('div');
+        card.className = `mandate-card ${partyConfig.color}`;
+        card.innerHTML = `
+            <div class="party-name">${party}</div>
+            <div class="mandate-count">${count}</div>
+            <div class="mandate-change ${changeClass}">${changeText} zu 2021</div>
+        `;
+        mandateOverview.appendChild(card);
+    });
+    
+    // Änderungen-Text
+    if (prognoseResults.changedWahlkreise > 0) {
+        changesText.textContent = `${prognoseResults.changedWahlkreise} Wahlkreis${prognoseResults.changedWahlkreise > 1 ? 'e' : ''} mit verändertem Gewinner gegenüber 2021`;
+    } else {
+        changesText.textContent = 'Keine Veränderungen gegenüber 2021';
+    }
+    
+    // Wahlkreis-Liste
+    wahlkreisList.innerHTML = '';
+    
+    prognoseResults.wahlkreise.forEach(wk => {
+        const partyConfig = PARTY_CONFIG[wk.gewinnerPrognose] || { color: 'party-other' };
+        
+        const item = document.createElement('div');
+        item.className = `wahlkreis-item ${wk.hasChanged ? 'changed' : ''}`;
+        item.onclick = () => openWahlkreisModal(wk.id);
+        
+        let changeHtml = '';
+        if (wk.hasChanged) {
+            changeHtml = `<span class="wahlkreis-change">Wechsel von ${wk.gewinner2021}</span>`;
+        }
+        
+        item.innerHTML = `
+            <div class="wahlkreis-info">
+                <span class="wahlkreis-name">${wk.name}</span>
+                <span class="wahlkreis-id">WK ${wk.id}</span>
+            </div>
+            <div class="wahlkreis-result">
+                <span class="wahlkreis-winner ${partyConfig.color}">${wk.gewinnerPrognose}</span>
+                <span class="wahlkreis-margin">+${wk.vorsprung.toFixed(1)}%</span>
+                ${changeHtml}
+            </div>
+        `;
+        wahlkreisList.appendChild(item);
+    });
+}
+
+// Toggle Wahlkreis-Details
+function toggleWahlkreisDetails() {
+    const list = document.getElementById('wahlkreis-list');
+    const btn = document.getElementById('toggle-wahlkreise-btn');
+    
+    if (list.classList.contains('hidden')) {
+        list.classList.remove('hidden');
+        btn.textContent = 'Details verbergen ▲';
+    } else {
+        list.classList.add('hidden');
+        btn.textContent = 'Details anzeigen ▼';
+    }
+}
+
+// Öffne Wahlkreis-Detail Modal
+function openWahlkreisModal(wahlkreisId) {
+    const wahlkreis = WAHLKREISE_2021.find(wk => wk.id === wahlkreisId);
+    if (!wahlkreis) return;
+    
+    const prognoseData = prognoseResults?.wahlkreise.find(wk => wk.id === wahlkreisId);
+    
+    const modal = document.getElementById('wahlkreis-modal');
+    const nameEl = document.getElementById('modal-wahlkreis-name');
+    const ergebnis2021El = document.getElementById('modal-ergebnis-2021');
+    const ergebnis2026El = document.getElementById('modal-ergebnis-2026');
+    const gewinner2021El = document.getElementById('modal-gewinner-2021');
+    const gewinner2026El = document.getElementById('modal-gewinner-2026');
+    
+    // Setze Wahlkreis-Name
+    nameEl.textContent = `${wahlkreis.name} (WK ${wahlkreis.id})`;
+    
+    // Sortiere Parteien nach Ergebnis 2021
+    const parteien2021 = Object.entries(wahlkreis.erststimmen)
+        .sort((a, b) => b[1] - a[1]);
+    
+    // Erstelle 2021 Balken
+    ergebnis2021El.innerHTML = parteien2021.map(([party, value]) => {
+        const partyConfig = PARTY_CONFIG[party] || { color: 'party-other' };
+        return `
+            <div class="ergebnis-row">
+                <span class="ergebnis-party">${party}</span>
+                <div class="ergebnis-bar-container">
+                    <div class="ergebnis-bar ${partyConfig.color}" style="width: ${value}%"></div>
+                </div>
+                <span class="ergebnis-value">${value.toFixed(1)}%</span>
+            </div>
+        `;
+    }).join('');
+    
+    // Setze Gewinner 2021
+    const partyConfig2021 = PARTY_CONFIG[wahlkreis.gewinner2021] || { color: 'party-other' };
+    gewinner2021El.className = partyConfig2021.color;
+    gewinner2021El.textContent = wahlkreis.gewinner2021;
+    
+    // Erstelle 2026 Prognose Balken
+    if (prognoseData && prognoseData.prognoseErgebnisse) {
+        const parteien2026 = Object.entries(prognoseData.prognoseErgebnisse)
+            .sort((a, b) => b[1] - a[1]);
+        
+        ergebnis2026El.innerHTML = parteien2026.map(([party, value]) => {
+            const partyConfig = PARTY_CONFIG[party] || { color: 'party-other' };
+            return `
+                <div class="ergebnis-row">
+                    <span class="ergebnis-party">${party}</span>
+                    <div class="ergebnis-bar-container">
+                        <div class="ergebnis-bar ${partyConfig.color}" style="width: ${Math.min(value, 100)}%"></div>
+                    </div>
+                    <span class="ergebnis-value">${value.toFixed(1)}%</span>
+                </div>
+            `;
+        }).join('');
+        
+        // Setze Gewinner 2026
+        const partyConfig2026 = PARTY_CONFIG[prognoseData.gewinnerPrognose] || { color: 'party-other' };
+        gewinner2026El.className = partyConfig2026.color;
+        gewinner2026El.textContent = prognoseData.gewinnerPrognose;
+    } else {
+        ergebnis2026El.innerHTML = '<p style="text-align: center; color: #666;">Bitte zuerst "Berechnen" klicken</p>';
+        gewinner2026El.className = '';
+        gewinner2026El.textContent = '–';
+    }
+    
+    // Zeige Modal
+    modal.classList.remove('hidden');
+}
+
+// Schließe Modal
+function closeWahlkreisModal() {
+    const modal = document.getElementById('wahlkreis-modal');
+    modal.classList.add('hidden');
+}
+
+// Schließe Modal bei Klick außerhalb
+document.addEventListener('click', (e) => {
+    const modal = document.getElementById('wahlkreis-modal');
+    if (e.target === modal) {
+        closeWahlkreisModal();
+    }
+});
+
+// Schließe Modal bei Escape-Taste
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        closeWahlkreisModal();
+    }
+});
+
+// Update Methoden-Beschreibung
+function updateMethodDescription() {
+    const method = document.getElementById('swing-method').value;
+    const description = document.getElementById('method-description');
+    
+    if (description) {
+        if (method === 'uniform') {
+            description.innerHTML = `
+                <p><strong>Uniform Swing:</strong> Die landesweite Veränderung wird gleichmäßig auf alle Wahlkreise angewendet.<br>
+                <em>Prognose = Ergebnis 2021 + (Umfrage - Landesergebnis 2021)</em></p>
+            `;
+        } else {
+            description.innerHTML = `
+                <p><strong>Proportionaler Swing:</strong> Die Veränderung wird verhältnismäßig zum bisherigen Ergebnis angewendet.<br>
+                <em>Prognose = Ergebnis 2021 × (Umfrage / Landesergebnis 2021)</em></p>
+            `;
+        }
+    }
+}
+
 // Event listeners
 document.addEventListener('DOMContentLoaded', () => {
     initParties();
@@ -699,11 +1156,25 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('add-party-btn').addEventListener('click', addParty);
     document.getElementById('calculate-btn').addEventListener('click', calculateSeats);
     
+    // Prognose Event Listeners
+    document.getElementById('calculate-prognose-btn').addEventListener('click', calculateWahlkreisPrognose);
+    document.getElementById('toggle-wahlkreise-btn').addEventListener('click', toggleWahlkreisDetails);
+    document.getElementById('swing-method').addEventListener('change', updateMethodDescription);
+    
     // Make functions globally available for inline onclick handlers
     window.removeParty = removeParty;
     window.validatePercentageInput = validatePercentageInput;
     window.validateDirectMandateInput = validateDirectMandateInput;
+    window.setMode = setMode;
+    window.closeWahlkreisModal = closeWahlkreisModal;
+    window.openWahlkreisModal = openWahlkreisModal;
     
     // Initial validation message update
     updateValidationMessage();
+    
+    // Prognose-Section initial verstecken (startet im manuellen Modus)
+    const prognoseSection = document.querySelector('.prognose-section');
+    if (prognoseSection) {
+        prognoseSection.style.display = 'none';
+    }
 });
