@@ -17,8 +17,8 @@ let parties = [];
 // Initialize default parties
 function initParties() {
     parties = [
-        { name: 'CDU', percentage: 25, directMandates: 45 },
-        { name: 'Grüne', percentage: 20, directMandates: 11 },
+        { name: 'CDU', percentage: 25, directMandates: 50 },
+        { name: 'Grüne', percentage: 20, directMandates: 16 },
         { name: 'SPD', percentage: 10, directMandates: 0 },
         { name: 'AfD', percentage: 20, directMandates: 4 },
         { name: 'FDP', percentage: 5, directMandates: 0 },
