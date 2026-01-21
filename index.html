@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Baden-Württemberg Landtag Sitzverteilungs-Rechner</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Baden-Württemberg Landtag Sitzverteilungs-Rechner</h1>
+            <p class="subtitle">Berechnung nach Sainte-Laguë/Schepers-Verfahren</p>
+        </header>
+
+        <div class="input-section">
+            <h2>Eingabe</h2>
+            <div class="info-box">
+                <p><strong>Landtag:</strong> Mindestgröße 120 Sitze | <strong>Direktmandate:</strong> 70</p>
+            </div>
+            
+            <table id="party-table" class="input-table">
+                <thead>
+                    <tr>
+                        <th>Partei</th>
+                        <th>Zweitstimmen (%)</th>
+                        <th>Direktmandate</th>
+                        <th>Aktion</th>
+                    </tr>
+                </thead>
+                <tbody id="party-tbody">
+                    <!-- Parties will be added here -->
+                </tbody>
+            </table>
+            
+            <button id="add-party-btn" class="btn-secondary">+ Partei hinzufügen</button>
+            <button id="calculate-btn" class="btn-primary">Sitzverteilung berechnen</button>
+            
+            <div id="validation-message" class="validation-message"></div>
+        </div>
+
+        <div id="results-section" class="results-section hidden">
+            <h2>Ergebnis</h2>
+            
+            <div class="summary-box">
+                <div class="summary-item">
+                    <span class="summary-label">Gesamtsitze:</span>
+                    <span id="total-seats" class="summary-value">0</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Überhangmandate:</span>
+                    <span id="overhang-seats" class="summary-value">0</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Ausgleichsmandate:</span>
+                    <span id="compensation-seats" class="summary-value">0</span>
+                </div>
+            </div>
+
+            <table id="results-table" class="results-table">
+                <thead>
+                    <tr>
+                        <th>Partei</th>
+                        <th>Zweitstimmen (%)</th>
+                        <th>Direktmandate</th>
+                        <th>Listensitze</th>
+                        <th>Überhang</th>
+                        <th>Ausgleich</th>
+                        <th>Gesamtsitze</th>
+                    </tr>
+                </thead>
+                <tbody id="results-tbody">
+                    <!-- Results will be added here -->
+                </tbody>
+            </table>
+
+            <div class="coalition-container">
+                <h3>Koalitionsrechner</h3>
+                <div class="coalition-selector">
+                    <p>Wählen Sie die Parteien für Ihre Koalition:</p>
+                    <div id="coalition-checkboxes" class="coalition-checkboxes">
+                        <!-- Checkboxes will be added here -->
+                    </div>
+                    <button id="calculate-coalition-btn" class="btn-primary">Koalition berechnen</button>
+                </div>
+                <div id="coalition-results" class="coalition-results">
+                    <!-- Coalition results will be shown here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
