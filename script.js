@@ -360,22 +360,23 @@ function calculateSeats() {
             overhangMandates[index] = 0;
         }
         
+        // Listensitze: Ursprüngliche Verteilung bei 120 Sitzen (vor Überhang)
+        // Wenn Direktmandate > ursprüngliche Listensitze, dann Listensitze = 0
+        if (direct > originalListSeats) {
+            listSeats[index] = 0;
+        } else {
+            listSeats[index] = originalListSeats;
+        }
+        
         // Final seats: Party gets at least their direct mandates, otherwise proportional seats
         const finalTotal = Math.max(proportionalSeats, direct);
         
-        // Listensitze: Sitze die über die Liste kommen (proportionale Verteilung - Direktmandate)
-        // Wenn Direktmandate > proportionale Sitze, dann Listensitze = 0
-        if (direct > proportionalSeats) {
-            listSeats[index] = 0;
-        } else {
-            listSeats[index] = proportionalSeats - direct;
-        }
-        
         // Ausgleichsmandate: Zusätzliche Listensitze durch Vergrößerung des Landtags
-        // = finale Listensitze - ursprüngliche Listensitze (nur wenn positiv)
+        // = finale proportionale Verteilung - ursprüngliche Listensitze (nur wenn positiv)
         // Nur für Parteien OHNE Überhangmandate
         if (overhangMandates[index] === 0) {
-            const finalListSeats = listSeats[index];
+            // Finale Listensitze = proportionale Sitze - Direktmandate (bei finaler Größe)
+            const finalListSeats = (proportionalSeats > direct) ? (proportionalSeats - direct) : 0;
             compensationSeats[index] = Math.max(0, finalListSeats - originalListSeats);
         } else {
             // Parteien mit Überhang bekommen keine Ausgleichsmandate
