@@ -39,6 +39,21 @@ header h1 {
     font-size: 0.9em;
 }
 
+.beta-notice {
+    margin-top: 12px;
+    padding: 8px 15px;
+    background: #fff3cd;
+    color: #856404;
+    border-radius: 6px;
+    font-size: 0.85em;
+    display: inline-block;
+}
+
+.beta-notice a {
+    color: #856404;
+    font-weight: 600;
+}
+
 .input-section {
     margin-bottom: 30px;
 }
