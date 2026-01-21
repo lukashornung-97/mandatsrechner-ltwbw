@@ -349,22 +349,31 @@ function calculateSeats() {
     eligibleParties.forEach((party, index) => {
         const direct = party.directMandates || 0;
         const proportionalSeats = finalDistribution[index];
+        const originalListSeats = initialListSeats[index];
         
-        // Final seats: at least direct mandates, otherwise proportional
-        const finalTotal = Math.max(proportionalSeats, direct);
-        
-        // Überhang: wenn Direktmandate > proportionale Sitze bei finaler Größe
-        if (direct > proportionalSeats) {
-            overhangMandates[index] = direct - proportionalSeats;
+        // Überhangmandate: Differenz zwischen Direktmandaten und ursprünglichen Listensitzen (bei 120 Sitzen)
+        // Nur wenn Direktmandate > ursprüngliche Listensitze
+        if (direct > originalListSeats) {
+            overhangMandates[index] = direct - originalListSeats;
         } else {
             overhangMandates[index] = 0;
         }
         
-        // Listensitze: Sitze die über die Liste kommen (Gesamtsitze - Direktmandate)
-        listSeats[index] = Math.max(0, finalTotal - direct);
+        // Final seats: Party gets at least their direct mandates, otherwise proportional seats
+        const finalTotal = Math.max(proportionalSeats, direct);
         
-        // Ausgleichsmandate: Differenz zwischen finaler und ursprünglicher Verteilung
-        compensationSeats[index] = Math.max(0, proportionalSeats - initialListSeats[index]);
+        // Listensitze: Sitze die über die Liste kommen (finale Verteilung - Direktmandate)
+        // Wenn Direktmandate > proportionale Sitze, dann Listensitze = 0
+        if (direct > proportionalSeats) {
+            listSeats[index] = 0;
+        } else {
+            listSeats[index] = proportionalSeats - direct;
+        }
+        
+        // Ausgleichsmandate: Zusätzliche Listensitze durch Vergrößerung des Landtags
+        // = finale Listensitze - ursprüngliche Listensitze (nur wenn positiv)
+        const finalListSeats = listSeats[index];
+        compensationSeats[index] = Math.max(0, finalListSeats - originalListSeats);
     });
     
     // Calculate final seat totals
