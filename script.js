@@ -361,12 +361,9 @@ function calculateSeats() {
         }
         
         // Listensitze: Ursprüngliche Verteilung bei 120 Sitzen (vor Überhang)
-        // Wenn Direktmandate > ursprüngliche Listensitze, dann Listensitze = 0
-        if (direct > originalListSeats) {
-            listSeats[index] = 0;
-        } else {
-            listSeats[index] = originalListSeats;
-        }
+        // Zeigt die ursprünglichen Listensitze, unabhängig von Direktmandaten
+        // Wenn Direktmandate > ursprüngliche Listensitze, dann werden diese als Überhang gezählt
+        listSeats[index] = originalListSeats;
         
         // Final seats: Party gets at least their direct mandates, otherwise proportional seats
         const finalTotal = Math.max(proportionalSeats, direct);
