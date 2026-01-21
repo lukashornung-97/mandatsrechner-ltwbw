@@ -28,8 +28,8 @@
             <div id="swing-method-container" class="swing-method-container" style="display: none;">
                 <label for="swing-method">Berechnungsmethode:</label>
                 <select id="swing-method">
-                    <option value="proportional">Proportionaler Swing (verhältnismäßig)</option>
                     <option value="uniform">Uniform Swing (gleichmäßige Verschiebung)</option>
+                    <option value="hybrid">Wahlkreis-Profil (historische Faktoren 2016/2021)</option>
                 </select>
                 <button id="calculate-direktmandate-btn" class="btn-primary" onclick="autoCalculateDirektmandate()">Berechnen</button>
             </div>
@@ -115,8 +115,8 @@
             
             <div class="prognose-controls">
                 <div class="method-description" id="method-description">
-                    <p><strong>Proportionaler Swing:</strong> Die Veränderung wird verhältnismäßig zum bisherigen Ergebnis angewendet.<br>
-                    <em>Prognose = Ergebnis 2021 × (Umfrage / Landesergebnis 2021)</em></p>
+                    <p><strong>Uniform Swing:</strong> Die landesweite Veränderung wird gleichmäßig auf alle Wahlkreise angewendet.<br>
+                    <em>Prognose = Ergebnis 2021 + (Umfrage - Landesergebnis 2021)</em></p>
                 </div>
                 <button id="calculate-prognose-btn" class="btn-primary">Wahlkreis-Details anzeigen</button>
             </div>

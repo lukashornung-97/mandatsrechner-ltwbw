@@ -113,6 +113,93 @@ const DIREKTMANDATE_2021 = {
     "Linke": 0
 };
 
+// ==========================================
+// WAHLERGEBNISSE 2016 (für Wahlkreis-Profil-Methode)
+// ==========================================
+
+const WAHLKREISE_2016 = {
+    1: { "Grüne": 42.4, "CDU": 18.9, "AfD": 7.0, "SPD": 10.7, "FDP": 9.7, "Linke": 7.3 },
+    2: { "Grüne": 37.2, "CDU": 24.4, "AfD": 10.6, "SPD": 10.6, "FDP": 10.7, "Linke": 3.3 },
+    3: { "Grüne": 30.7, "CDU": 23.5, "AfD": 15.3, "SPD": 12.9, "FDP": 9.1, "Linke": 4.4 },
+    4: { "Grüne": 34.4, "CDU": 22.2, "AfD": 12.0, "SPD": 13.5, "FDP": 8.0, "Linke": 5.9 },
+    5: { "Grüne": 27.7, "CDU": 27.6, "AfD": 16.5, "SPD": 13.8, "FDP": 8.9, "Linke": 2.4 },
+    6: { "Grüne": 31.9, "CDU": 27.4, "AfD": 14.9, "SPD": 11.3, "FDP": 9.5, "Linke": 2.2 },
+    7: { "Grüne": 32.3, "CDU": 26.0, "AfD": 12.2, "SPD": 16.4, "FDP": 6.8, "Linke": 2.8 },
+    8: { "Grüne": 30.5, "CDU": 26.5, "AfD": 14.2, "SPD": 14.1, "FDP": 8.2, "Linke": 1.8 },
+    9: { "Grüne": 34.9, "CDU": 25.2, "AfD": 14.4, "SPD": 10.5, "FDP": 9.1, "Linke": 2.1 },
+    10: { "Grüne": 29.1, "CDU": 23.4, "AfD": 17.4, "SPD": 14.8, "FDP": 8.3, "Linke": 2.1 },
+    11: { "Grüne": 27.8, "CDU": 28.2, "AfD": 16.0, "SPD": 15.3, "FDP": 7.6, "Linke": 1.8 },
+    12: { "Grüne": 33.5, "CDU": 23.2, "AfD": 15.0, "SPD": 13.0, "FDP": 8.9, "Linke": 2.9 },
+    13: { "Grüne": 33.1, "CDU": 27.0, "AfD": 14.1, "SPD": 11.5, "FDP": 9.0, "Linke": 2.2 },
+    14: { "Grüne": 32.1, "CDU": 25.7, "AfD": 15.0, "SPD": 13.0, "FDP": 9.2, "Linke": 2.3 },
+    15: { "Grüne": 27.8, "CDU": 26.2, "AfD": 14.7, "SPD": 13.8, "FDP": 11.4, "Linke": 2.7 },
+    16: { "Grüne": 27.1, "CDU": 25.8, "AfD": 15.4, "SPD": 12.6, "FDP": 12.6, "Linke": 2.2 },
+    17: { "Grüne": 22.3, "CDU": 27.7, "AfD": 19.7, "SPD": 15.7, "FDP": 8.0, "Linke": 2.1 },
+    18: { "Grüne": 27.1, "CDU": 22.7, "AfD": 18.2, "SPD": 15.0, "FDP": 10.2, "Linke": 2.9 },
+    19: { "Grüne": 26.1, "CDU": 26.6, "AfD": 18.3, "SPD": 13.4, "FDP": 9.6, "Linke": 2.1 },
+    20: { "Grüne": 23.8, "CDU": 25.8, "AfD": 18.7, "SPD": 17.6, "FDP": 8.1, "Linke": 2.5 },
+    21: { "Grüne": 27.1, "CDU": 28.1, "AfD": 17.1, "SPD": 11.5, "FDP": 10.0, "Linke": 2.4 },
+    22: { "Grüne": 27.5, "CDU": 23.0, "AfD": 17.8, "SPD": 14.0, "FDP": 11.3, "Linke": 2.4 },
+    23: { "Grüne": 21.3, "CDU": 35.4, "AfD": 17.2, "SPD": 11.5, "FDP": 7.5, "Linke": 2.8 },
+    24: { "Grüne": 26.1, "CDU": 25.1, "AfD": 17.2, "SPD": 19.4, "FDP": 5.7, "Linke": 2.9 },
+    25: { "Grüne": 25.6, "CDU": 31.4, "AfD": 16.2, "SPD": 13.6, "FDP": 7.1, "Linke": 2.8 },
+    26: { "Grüne": 25.9, "CDU": 35.4, "AfD": 14.5, "SPD": 12.0, "FDP": 6.2, "Linke": 3.1 },
+    27: { "Grüne": 36.2, "CDU": 21.2, "AfD": 12.0, "SPD": 13.2, "FDP": 7.7, "Linke": 4.8 },
+    28: { "Grüne": 35.1, "CDU": 21.0, "AfD": 13.9, "SPD": 13.4, "FDP": 6.7, "Linke": 4.9 },
+    29: { "Grüne": 24.2, "CDU": 30.0, "AfD": 19.7, "SPD": 11.9, "FDP": 8.2, "Linke": 2.4 },
+    30: { "Grüne": 27.5, "CDU": 27.2, "AfD": 18.5, "SPD": 12.1, "FDP": 8.3, "Linke": 2.2 },
+    31: { "Grüne": 29.5, "CDU": 28.8, "AfD": 14.1, "SPD": 13.8, "FDP": 8.5, "Linke": 2.5 },
+    32: { "Grüne": 26.4, "CDU": 25.6, "AfD": 17.6, "SPD": 17.6, "FDP": 6.2, "Linke": 2.3 },
+    33: { "Grüne": 32.7, "CDU": 29.3, "AfD": 14.5, "SPD": 10.0, "FDP": 8.5, "Linke": 2.4 },
+    34: { "Grüne": 41.0, "CDU": 19.2, "AfD": 10.9, "SPD": 12.1, "FDP": 8.0, "Linke": 6.1 },
+    35: { "Grüne": 21.9, "CDU": 17.2, "AfD": 23.0, "SPD": 22.2, "FDP": 6.0, "Linke": 5.1 },
+    36: { "Grüne": 31.4, "CDU": 20.9, "AfD": 14.4, "SPD": 16.8, "FDP": 8.4, "Linke": 4.5 },
+    37: { "Grüne": 28.2, "CDU": 28.4, "AfD": 18.6, "SPD": 12.3, "FDP": 7.4, "Linke": 2.6 },
+    38: { "Grüne": 19.7, "CDU": 34.2, "AfD": 18.0, "SPD": 15.2, "FDP": 7.0, "Linke": 2.3 },
+    39: { "Grüne": 29.2, "CDU": 25.8, "AfD": 15.2, "SPD": 15.3, "FDP": 8.8, "Linke": 3.0 },
+    40: { "Grüne": 26.6, "CDU": 25.0, "AfD": 19.1, "SPD": 15.4, "FDP": 7.0, "Linke": 3.0 },
+    41: { "Grüne": 26.8, "CDU": 26.6, "AfD": 18.0, "SPD": 15.0, "FDP": 7.7, "Linke": 2.7 },
+    42: { "Grüne": 24.1, "CDU": 22.4, "AfD": 24.2, "SPD": 11.4, "FDP": 10.6, "Linke": 3.4 },
+    43: { "Grüne": 24.3, "CDU": 31.5, "AfD": 19.1, "SPD": 11.6, "FDP": 8.1, "Linke": 2.2 },
+    44: { "Grüne": 26.9, "CDU": 24.7, "AfD": 19.2, "SPD": 12.3, "FDP": 10.4, "Linke": 2.0 },
+    45: { "Grüne": 21.3, "CDU": 30.3, "AfD": 17.6, "SPD": 10.8, "FDP": 13.5, "Linke": 1.9 },
+    46: { "Grüne": 38.9, "CDU": 25.6, "AfD": 8.4, "SPD": 11.7, "FDP": 7.5, "Linke": 4.8 },
+    47: { "Grüne": 40.5, "CDU": 17.2, "AfD": 10.6, "SPD": 13.8, "FDP": 6.1, "Linke": 7.7 },
+    48: { "Grüne": 35.1, "CDU": 27.8, "AfD": 11.5, "SPD": 12.2, "FDP": 7.4, "Linke": 2.6 },
+    49: { "Grüne": 35.5, "CDU": 24.5, "AfD": 11.6, "SPD": 13.4, "FDP": 7.5, "Linke": 2.7 },
+    50: { "Grüne": 30.7, "CDU": 28.0, "AfD": 15.0, "SPD": 13.0, "FDP": 6.7, "Linke": 2.4 },
+    51: { "Grüne": 33.7, "CDU": 28.4, "AfD": 14.1, "SPD": 10.6, "FDP": 7.4, "Linke": 2.2 },
+    52: { "Grüne": 28.8, "CDU": 30.8, "AfD": 15.0, "SPD": 12.2, "FDP": 8.1, "Linke": 2.3 },
+    53: { "Grüne": 26.0, "CDU": 33.0, "AfD": 16.4, "SPD": 8.6, "FDP": 8.5, "Linke": 1.9 },
+    54: { "Grüne": 31.6, "CDU": 29.0, "AfD": 14.8, "SPD": 10.0, "FDP": 7.9, "Linke": 2.0 },
+    55: { "Grüne": 27.0, "CDU": 33.7, "AfD": 15.9, "SPD": 8.8, "FDP": 8.3, "Linke": 2.1 },
+    56: { "Grüne": 39.6, "CDU": 22.6, "AfD": 9.4, "SPD": 12.2, "FDP": 9.1, "Linke": 3.9 },
+    57: { "Grüne": 28.8, "CDU": 27.8, "AfD": 15.7, "SPD": 12.8, "FDP": 8.3, "Linke": 2.2 },
+    58: { "Grüne": 31.7, "CDU": 25.2, "AfD": 13.2, "SPD": 16.7, "FDP": 6.5, "Linke": 2.7 },
+    59: { "Grüne": 30.4, "CDU": 30.8, "AfD": 12.3, "SPD": 12.3, "FDP": 7.4, "Linke": 2.2 },
+    60: { "Grüne": 31.2, "CDU": 23.9, "AfD": 15.1, "SPD": 14.2, "FDP": 8.4, "Linke": 3.4 },
+    61: { "Grüne": 27.8, "CDU": 28.5, "AfD": 16.1, "SPD": 11.2, "FDP": 11.4, "Linke": 2.2 },
+    62: { "Grüne": 38.0, "CDU": 23.5, "AfD": 10.2, "SPD": 12.7, "FDP": 6.4, "Linke": 5.4 },
+    63: { "Grüne": 29.0, "CDU": 29.5, "AfD": 17.9, "SPD": 9.9, "FDP": 8.1, "Linke": 2.3 },
+    64: { "Grüne": 33.0, "CDU": 25.2, "AfD": 13.0, "SPD": 14.7, "FDP": 7.3, "Linke": 2.9 },
+    65: { "Grüne": 27.6, "CDU": 36.2, "AfD": 16.0, "SPD": 9.1, "FDP": 6.5, "Linke": 1.6 },
+    66: { "Grüne": 29.4, "CDU": 35.9, "AfD": 15.0, "SPD": 7.3, "FDP": 7.2, "Linke": 1.9 },
+    67: { "Grüne": 35.7, "CDU": 27.4, "AfD": 12.4, "SPD": 10.1, "FDP": 9.1, "Linke": 2.7 },
+    68: { "Grüne": 30.3, "CDU": 35.1, "AfD": 13.9, "SPD": 7.5, "FDP": 6.1, "Linke": 1.9 },
+    69: { "Grüne": 33.1, "CDU": 31.0, "AfD": 12.1, "SPD": 8.5, "FDP": 9.1, "Linke": 2.5 },
+    70: { "Grüne": 33.7, "CDU": 32.3, "AfD": 14.7, "SPD": 6.8, "FDP": 7.5, "Linke": 1.8 }
+};
+
+// Landesergebnis 2016 (Erststimmen in Prozent)
+const LANDESERGEBNIS_2016 = {
+    "Grüne": 30.3,
+    "CDU": 27.0,
+    "SPD": 12.7,
+    "AfD": 15.1,
+    "FDP": 8.3,
+    "Linke": 2.9
+};
+
 let parties = [];
 let currentMode = 'manual'; // 'manual' oder 'auto'
 let hasCalculated = false; // Wurde im Auto-Modus schon berechnet?
@@ -916,7 +1003,8 @@ function autoCalculateDirektmandate() {
             if (method === 'uniform') {
                 prognose = Math.max(0, ergebnis2021 + (umfrage - landesergebnis));
             } else {
-                prognose = landesergebnis > 0 ? Math.max(0, ergebnis2021 * (umfrage / landesergebnis)) : ergebnis2021;
+                // Wahlkreis-Profil (Hybrid) Methode
+                prognose = calculateHybridProfile(wahlkreis.id, party, umfrage);
             }
             
             if (prognose > maxWert) {
@@ -953,11 +1041,30 @@ function calculateUniformSwing(wahlkreisErgebnis, umfrageWert, landesergebnis202
     return Math.max(0, wahlkreisErgebnis + swing);
 }
 
-// Proportionaler Swing: Prognose = Ergebnis2021 * (Umfrage / Landesergebnis2021)
-function calculateProportionalSwing(wahlkreisErgebnis, umfrageWert, landesergebnis2021) {
-    if (landesergebnis2021 === 0) return wahlkreisErgebnis;
-    const factor = umfrageWert / landesergebnis2021;
-    return Math.max(0, wahlkreisErgebnis * factor);
+// Wahlkreis-Profil (Hybrid): Nutzt historische relative Faktoren aus 2016 und 2021
+// Für AfD: 50% Faktor-Methode + 50% Uniform Swing (wegen höherer Volatilität)
+function calculateHybridProfile(wahlkreisId, party, umfrageWert) {
+    const ergebnis2021 = WAHLKREISE_2021.find(wk => wk.id === wahlkreisId)?.erststimmen[party] || 0;
+    const ergebnis2016 = WAHLKREISE_2016[wahlkreisId]?.[party] || 0;
+    const land2021 = LANDESERGEBNIS_2021[party] || 0;
+    const land2016 = LANDESERGEBNIS_2016[party] || 0;
+    
+    // Berechne durchschnittlichen relativen Faktor aus 2016 und 2021
+    const faktor2021 = land2021 > 0 ? ergebnis2021 / land2021 : 1;
+    const faktor2016 = land2016 > 0 ? ergebnis2016 / land2016 : 1;
+    const faktorAvg = (faktor2021 + faktor2016) / 2;
+    
+    // Für AfD: Hybrid-Ansatz (50% Faktor, 50% Uniform Swing)
+    // Dies vermeidet Übertreibung bei stark wachsenden Parteien
+    if (party === "AfD") {
+        const prognoseFaktor = umfrageWert * faktorAvg;
+        const swing = umfrageWert - land2021;
+        const prognoseUniform = ergebnis2021 + swing;
+        return Math.max(0, 0.5 * prognoseFaktor + 0.5 * prognoseUniform);
+    }
+    
+    // Für andere Parteien: Reine Faktor-Methode
+    return Math.max(0, umfrageWert * faktorAvg);
 }
 
 // Berechne Prognose für alle Wahlkreise
@@ -992,7 +1099,8 @@ function calculateWahlkreisPrognose() {
             if (method === 'uniform') {
                 prognoseErgebnisse[party] = calculateUniformSwing(ergebnis2021, umfrage, landesergebnis);
             } else {
-                prognoseErgebnisse[party] = calculateProportionalSwing(ergebnis2021, umfrage, landesergebnis);
+                // Wahlkreis-Profil (Hybrid) Methode
+                prognoseErgebnisse[party] = calculateHybridProfile(wahlkreis.id, party, umfrage);
             }
         });
         
@@ -1243,8 +1351,10 @@ function updateMethodDescription() {
             `;
         } else {
             description.innerHTML = `
-                <p><strong>Proportionaler Swing:</strong> Die Veränderung wird verhältnismäßig zum bisherigen Ergebnis angewendet.<br>
-                <em>Prognose = Ergebnis 2021 × (Umfrage / Landesergebnis 2021)</em></p>
+                <p><strong>Wahlkreis-Profil:</strong> Nutzt historische Daten aus 2016 und 2021, um lokale Stärken/Schwächen zu berücksichtigen.<br>
+                <em>Durchschnittlicher Faktor = (WK/Land 2016 + WK/Land 2021) / 2</em><br>
+                <em>Prognose = Umfrage × Faktor</em><br>
+                <small>Für AfD: Hybrid-Ansatz (50% Faktor + 50% Uniform Swing) wegen höherer Volatilität</small></p>
             `;
         }
     }
