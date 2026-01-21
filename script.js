@@ -360,25 +360,21 @@ function calculateSeats() {
             overhangMandates[index] = 0;
         }
         
-        // Listensitze: Ursprüngliche Verteilung bei 120 Sitzen (vor Überhang)
-        // Zeigt die ursprünglichen Listensitze, unabhängig von Direktmandaten
-        // Wenn Direktmandate > ursprüngliche Listensitze, dann werden diese als Überhang gezählt
-        listSeats[index] = originalListSeats;
-        
         // Final seats: Party gets at least their direct mandates, otherwise proportional seats
         const finalTotal = Math.max(proportionalSeats, direct);
         
-        // Ausgleichsmandate: Zusätzliche Listensitze durch Vergrößerung des Landtags
-        // = finale proportionale Verteilung - ursprüngliche Listensitze (nur wenn positiv)
+        // Ausgleichsmandate: Zusätzliche Sitze durch Vergrößerung des Landtags
+        // = finale Gesamtsitze - ursprüngliche Listensitze
         // Nur für Parteien OHNE Überhangmandate
         if (overhangMandates[index] === 0) {
-            // Finale Listensitze = proportionale Sitze - Direktmandate (bei finaler Größe)
-            const finalListSeats = (proportionalSeats > direct) ? (proportionalSeats - direct) : 0;
-            compensationSeats[index] = Math.max(0, finalListSeats - originalListSeats);
+            compensationSeats[index] = Math.max(0, finalTotal - originalListSeats);
         } else {
             // Parteien mit Überhang bekommen keine Ausgleichsmandate
             compensationSeats[index] = 0;
         }
+        
+        // Speichere ursprüngliche Listensitze (wird nicht mehr in Tabelle angezeigt)
+        listSeats[index] = originalListSeats;
     });
     
     // Calculate final seat totals
@@ -418,10 +414,9 @@ function displayResults(eligibleParties, listSeats, overhangMandates, compensati
             <td class="party-name">${party.name}</td>
             <td>${party.percentage.toFixed(1)}%</td>
             <td>${party.directMandates || 0}</td>
-            <td>${listSeats[index]}</td>
+            <td><strong>${finalSeats[index]}</strong></td>
             <td>${overhangMandates[index] || 0}</td>
             <td>${compensationSeats[index] || 0}</td>
-            <td><strong>${finalSeats[index]}</strong></td>
         `;
         tbody.appendChild(row);
     });
