@@ -351,8 +351,9 @@ function calculateSeats() {
         const proportionalSeats = finalDistribution[index];
         const originalListSeats = initialListSeats[index];
         
-        // Überhangmandate: Differenz zwischen Direktmandaten und ursprünglichen Listensitzen (bei 120 Sitzen)
-        // Nur wenn Direktmandate > ursprüngliche Listensitze
+        // Überhangmandate: Mehr Direktmandate als theoretisch Listensitze zustehen
+        // Berechnet bei der ursprünglichen Verteilung (120 Sitze)
+        // = Direktmandate - ursprüngliche Listensitze
         if (direct > originalListSeats) {
             overhangMandates[index] = direct - originalListSeats;
         } else {
@@ -362,7 +363,7 @@ function calculateSeats() {
         // Final seats: Party gets at least their direct mandates, otherwise proportional seats
         const finalTotal = Math.max(proportionalSeats, direct);
         
-        // Listensitze: Sitze die über die Liste kommen (finale Verteilung - Direktmandate)
+        // Listensitze: Sitze die über die Liste kommen (proportionale Verteilung - Direktmandate)
         // Wenn Direktmandate > proportionale Sitze, dann Listensitze = 0
         if (direct > proportionalSeats) {
             listSeats[index] = 0;
@@ -372,8 +373,14 @@ function calculateSeats() {
         
         // Ausgleichsmandate: Zusätzliche Listensitze durch Vergrößerung des Landtags
         // = finale Listensitze - ursprüngliche Listensitze (nur wenn positiv)
-        const finalListSeats = listSeats[index];
-        compensationSeats[index] = Math.max(0, finalListSeats - originalListSeats);
+        // Nur für Parteien OHNE Überhangmandate
+        if (overhangMandates[index] === 0) {
+            const finalListSeats = listSeats[index];
+            compensationSeats[index] = Math.max(0, finalListSeats - originalListSeats);
+        } else {
+            // Parteien mit Überhang bekommen keine Ausgleichsmandate
+            compensationSeats[index] = 0;
+        }
     });
     
     // Calculate final seat totals
