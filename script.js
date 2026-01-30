@@ -1394,6 +1394,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
+    // Initialize dummy data mode
+    const dummyCheckbox = document.getElementById('use-dummy-data');
+    if (dummyCheckbox && dummyCheckbox.checked) {
+        toggleDummyData();
+    }
+    
     // Initial validation message update
     updateValidationMessage();
     
@@ -1580,8 +1586,10 @@ function getPartyNameFromColumn(columnName, row) {
 }
 
 // Generate dummy data based on 2021 results with partial counting simulation
-function generateDummyData() {
+// Adapted for Wahltermin 20260308 (8. März 2026)
+function generateDummyData(wahldatum = "20260308") {
     const results = {};
+    const wahljahr = wahldatum.substring(0, 4); // 2026
     
     WAHLKREISE_2021.forEach(wahlkreis => {
         // Simulate partial counting (random between 20% and 100%)
@@ -1641,6 +1649,8 @@ function generateDummyData() {
         
         results[wahlkreis.id] = {
             wahlkreisId: wahlkreis.id,
+            wahldatum: wahldatum,
+            wahljahr: wahljahr,
             totalStimmen: totalStimmen,
             parteien: parteien,
             winner: winner,
@@ -1769,34 +1779,28 @@ function toggleDummyData() {
 
 // Fetch Wahlergebnisse for all Wahlkreise
 async function fetchWahlergebnisse() {
-    const datumInput = document.getElementById('wahlabend-datum');
-    const wahldatum = datumInput.value.trim() || WAHLABEND_CONFIG.defaultWahldatum;
+    // Use fixed date 20260308 (8. März 2026)
+    const wahldatum = WAHLABEND_CONFIG.defaultWahldatum;
     const statusDiv = document.getElementById('wahlabend-status');
     const fetchBtn = document.getElementById('fetch-results-btn');
     const resultsDiv = document.getElementById('wahlabend-results');
-    
-    // Validate date format
-    if (!/^\d{8}$/.test(wahldatum)) {
-        statusDiv.textContent = 'Fehler: Ungültiges Datumsformat. Bitte YYYYMMDD verwenden (z.B. 20260308).';
-        statusDiv.className = 'wahlabend-status error';
-        return;
-    }
     
     // Check if dummy data should be used
     const dummyCheckbox = document.getElementById('use-dummy-data');
     useDummyData = dummyCheckbox ? dummyCheckbox.checked : false;
     
     if (useDummyData) {
-        // Generate dummy data immediately
-        statusDiv.textContent = 'Generiere Dummy-Daten...';
+        // Generate dummy data immediately with the specified date
+        statusDiv.textContent = `Generiere Dummy-Daten für ${wahldatum}...`;
         statusDiv.className = 'wahlabend-status info';
         fetchBtn.disabled = true;
         resultsDiv.classList.add('hidden');
         
         // Simulate loading delay
         setTimeout(() => {
-            wahlabendResults = generateDummyData();
-            statusDiv.textContent = `Dummy-Daten geladen: ${Object.keys(wahlabendResults).length} Wahlkreise`;
+            wahlabendResults = generateDummyData(wahldatum);
+            const wahljahr = wahldatum.substring(0, 4);
+            statusDiv.textContent = `Dummy-Daten geladen für ${wahldatum} (${wahljahr}): ${Object.keys(wahlabendResults).length} Wahlkreise`;
             statusDiv.className = 'wahlabend-status success';
             displayLiveResults();
             fetchBtn.disabled = false;
@@ -1877,7 +1881,7 @@ async function fetchWahlergebnisse() {
         wahlabendResults = results;
         
         if (Object.keys(results).length === 0) {
-            let errorMsg = `Keine Daten gefunden. Mögliche Ursachen:\n`;
+            let errorMsg = `Keine Daten gefunden für ${wahldatum} (${wahljahr}). Mögliche Ursachen:\n`;
             errorMsg += `1) Falsches Datum (aktuell: ${wahldatum})\n`;
             errorMsg += `2) Daten noch nicht verfügbar\n`;
             errorMsg += `3) CORS-Fehler (Browser blockiert Cross-Origin-Requests)\n`;
@@ -1886,7 +1890,7 @@ async function fetchWahlergebnisse() {
             statusDiv.textContent = errorMsg;
             statusDiv.className = 'wahlabend-status error';
         } else {
-            statusDiv.textContent = `Erfolgreich: ${Object.keys(results).length} Wahlkreise geladen. ${errors.length > 0 ? `(${errors.length} Fehler - siehe Konsole für Details)` : ''}`;
+            statusDiv.textContent = `Erfolgreich für ${wahldatum} (${wahljahr}): ${Object.keys(results).length} Wahlkreise geladen. ${errors.length > 0 ? `(${errors.length} Fehler - siehe Konsole für Details)` : ''}`;
             statusDiv.className = 'wahlabend-status success';
             if (errors.length > 0) {
                 console.warn('Fehler beim Abrufen:', errors);
