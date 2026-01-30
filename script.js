@@ -1379,6 +1379,19 @@ document.addEventListener('DOMContentLoaded', () => {
     window.setMode = setMode;
     window.closeWahlkreisModal = closeWahlkreisModal;
     window.openWahlkreisModal = openWahlkreisModal;
+    window.toggleWahlabendSection = toggleWahlabendSection;
+    window.checkWahlabendPassword = checkWahlabendPassword;
+    window.fetchWahlergebnisse = fetchWahlergebnisse;
+    
+    // Allow Enter key to submit password
+    const passwordInput = document.getElementById('wahlabend-password');
+    if (passwordInput) {
+        passwordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                checkWahlabendPassword();
+            }
+        });
+    }
     
     // Initial validation message update
     updateValidationMessage();
@@ -1389,3 +1402,503 @@ document.addEventListener('DOMContentLoaded', () => {
         prognoseSection.style.display = 'none';
     }
 });
+
+// ==========================================
+// WAHLABEND LIVE-ERGEBNISSE
+// ==========================================
+
+// AGS-Mapping für alle 44 Verwaltungseinheiten (9 Stadtkreise + 35 Landkreise)
+const AGS_MAPPING = {
+    // Regierungsbezirk Stuttgart
+    "08111000": { name: "Stuttgart", wahlkreise: [1, 2, 3, 4] },
+    "08115000": { name: "Böblingen", wahlkreise: [5, 6] },
+    "08116000": { name: "Esslingen", wahlkreise: [7, 8, 9] },
+    "08117000": { name: "Göppingen", wahlkreise: [10, 11] },
+    "08118000": { name: "Ludwigsburg", wahlkreise: [12, 13, 14, 15, 16] },
+    "08119000": { name: "Rems-Murr-Kreis", wahlkreise: [17] },
+    "08121000": { name: "Heilbronn (Stadt)", wahlkreise: [18] },
+    "08125000": { name: "Heilbronn (Landkreis)", wahlkreise: [19, 20] },
+    "08126000": { name: "Hohenlohekreis", wahlkreise: [21] },
+    "08127000": { name: "Schwäbisch Hall", wahlkreise: [22] },
+    "08128000": { name: "Main-Tauber-Kreis", wahlkreise: [23] },
+    "08135000": { name: "Heidenheim", wahlkreise: [24] },
+    "08136000": { name: "Ostalbkreis", wahlkreise: [25, 26] },
+    
+    // Regierungsbezirk Karlsruhe
+    "08211000": { name: "Baden-Baden", wahlkreise: [33] },
+    "08212000": { name: "Karlsruhe", wahlkreise: [27, 28] },
+    "08215000": { name: "Karlsruhe (Landkreis)", wahlkreise: [29, 30, 31] },
+    "08216000": { name: "Rastatt", wahlkreise: [32] },
+    "08221000": { name: "Heidelberg", wahlkreise: [34] },
+    "08222000": { name: "Mannheim", wahlkreise: [35, 36] },
+    "08225000": { name: "Neckar-Odenwald-Kreis", wahlkreise: [38] },
+    "08226000": { name: "Rhein-Neckar-Kreis", wahlkreise: [37, 39, 40, 41] },
+    "08231000": { name: "Pforzheim", wahlkreise: [42] },
+    "08235000": { name: "Calw", wahlkreise: [43] },
+    "08236000": { name: "Enzkreis", wahlkreise: [44] },
+    "08237000": { name: "Freudenstadt", wahlkreise: [45] },
+    
+    // Regierungsbezirk Freiburg
+    "08311000": { name: "Freiburg im Breisgau", wahlkreise: [46, 47] },
+    "08315000": { name: "Breisgau-Hochschwarzwald", wahlkreise: [48] },
+    "08316000": { name: "Emmendingen", wahlkreise: [49] },
+    "08317000": { name: "Ortenaukreis", wahlkreise: [50, 51, 52] },
+    "08325000": { name: "Rottweil", wahlkreise: [53] },
+    "08326000": { name: "Schwarzwald-Baar-Kreis", wahlkreise: [54] },
+    "08327000": { name: "Tuttlingen", wahlkreise: [55] },
+    "08335000": { name: "Konstanz", wahlkreise: [56, 57] },
+    "08336000": { name: "Lörrach", wahlkreise: [58] },
+    "08337000": { name: "Waldshut", wahlkreise: [59] },
+    
+    // Regierungsbezirk Tübingen
+    "08415000": { name: "Reutlingen", wahlkreise: [60] },
+    "08416000": { name: "Tübingen", wahlkreise: [61, 62] },
+    "08417000": { name: "Zollernalbkreis", wahlkreise: [63] },
+    "08421000": { name: "Ulm", wahlkreise: [64] },
+    "08425000": { name: "Alb-Donau-Kreis", wahlkreise: [65] },
+    "08426000": { name: "Biberach", wahlkreise: [66] },
+    "08435000": { name: "Bodenseekreis", wahlkreise: [67] },
+    "08436000": { name: "Ravensburg", wahlkreise: [68, 69] },
+    "08437000": { name: "Sigmaringen", wahlkreise: [70] }
+};
+
+// Mapping von Wahlkreis-ID zu AGS
+const WAHLKREIS_TO_AGS = {};
+Object.keys(AGS_MAPPING).forEach(ags => {
+    AGS_MAPPING[ags].wahlkreise.forEach(wkId => {
+        WAHLKREIS_TO_AGS[wkId] = ags;
+    });
+});
+
+// Wahlabend-Konfiguration
+const WAHLABEND_CONFIG = {
+    password: "spdbw",
+    defaultWahldatum: "20260308", // 8. März 2026 (vermutlich)
+    baseUrl: "https://wahlergebnisse.komm.one/lb/produktion"
+};
+
+// Wahlabend State
+let wahlabendAuthenticated = false;
+let wahlabendResults = null;
+
+// Toggle Wahlabend Section
+function toggleWahlabendSection() {
+    const section = document.getElementById('wahlabend-section');
+    const login = document.getElementById('wahlabend-login');
+    const content = document.getElementById('wahlabend-content');
+    
+    if (section.classList.contains('hidden')) {
+        section.classList.remove('hidden');
+        // Reset authentication if section was closed
+        if (!wahlabendAuthenticated) {
+            login.classList.remove('hidden');
+            content.classList.add('hidden');
+        }
+    } else {
+        section.classList.add('hidden');
+    }
+}
+
+// Check Wahlabend Password
+function checkWahlabendPassword() {
+    const passwordInput = document.getElementById('wahlabend-password');
+    const password = passwordInput.value.trim();
+    const errorDiv = document.getElementById('wahlabend-password-error');
+    const login = document.getElementById('wahlabend-login');
+    const content = document.getElementById('wahlabend-content');
+    
+    errorDiv.classList.add('hidden');
+    errorDiv.textContent = '';
+    
+    if (password === WAHLABEND_CONFIG.password) {
+        wahlabendAuthenticated = true;
+        login.classList.add('hidden');
+        content.classList.remove('hidden');
+        passwordInput.value = '';
+    } else {
+        errorDiv.textContent = 'Falsches Passwort. Bitte versuchen Sie es erneut.';
+        errorDiv.classList.remove('hidden');
+        passwordInput.value = '';
+        passwordInput.focus();
+    }
+}
+
+// Parse CSV text (UTF-8, semicolon-separated)
+function parseCSV(csvText) {
+    const lines = csvText.split('\n').filter(line => line.trim());
+    if (lines.length === 0) return [];
+    
+    // Parse header
+    const headers = lines[0].split(';').map(h => h.trim().replace(/^"|"$/g, ''));
+    
+    // Parse data rows
+    const rows = [];
+    for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(';').map(v => v.trim().replace(/^"|"$/g, ''));
+        const row = {};
+        headers.forEach((header, index) => {
+            row[header] = values[index] || '';
+        });
+        rows.push(row);
+    }
+    
+    return rows;
+}
+
+// Fetch CSV from URL
+async function fetchCSV(url) {
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        const text = await response.text();
+        return parseCSV(text);
+    } catch (error) {
+        console.error(`Error fetching CSV from ${url}:`, error);
+        throw error;
+    }
+}
+
+// Get party name from column name (D1, D2, etc.)
+// This is a simplified mapping - in reality, we'd need to map party numbers to names
+// For now, we'll try to extract from the CSV structure or use a mapping
+function getPartyNameFromColumn(columnName, row) {
+    // Try to find party name in other columns or use a default mapping
+    // This is a placeholder - actual implementation depends on CSV structure
+    const partyMapping = {
+        'D1': 'CDU',
+        'D2': 'SPD',
+        'D3': 'Grüne',
+        'D4': 'FDP',
+        'D5': 'AfD',
+        'D6': 'Linke'
+    };
+    return partyMapping[columnName] || `Partei ${columnName}`;
+}
+
+// Extract Wahlkreis results from CSV data
+function extractWahlkreisResults(csvData, wahlkreisId) {
+    // Find rows for this Wahlkreis
+    // The CSV might have "gebiet-nr" or "gebiet-name" containing the Wahlkreis info
+    const wahlkreisRows = csvData.filter(row => {
+        const gebietNr = row['gebiet-nr'] || row['gebiet-nr'] || '';
+        const gebietName = (row['gebiet-name'] || row['gebiet-name'] || '').toLowerCase();
+        // Check if this row belongs to the Wahlkreis
+        return gebietNr.includes(wahlkreisId.toString()) || 
+               gebietName.includes(`wahlkreis ${wahlkreisId}`) ||
+               gebietName.includes(`wk ${wahlkreisId}`);
+    });
+    
+    if (wahlkreisRows.length === 0) return null;
+    
+    // Aggregate results across all rows for this Wahlkreis
+    const results = {
+        wahlkreisId: wahlkreisId,
+        totalStimmen: 0,
+        parteien: {},
+        schnellmeldungen: {
+            total: 0,
+            max: 0
+        }
+    };
+    
+    // Find party columns (D1, D2, D3, etc.)
+    const partyColumns = Object.keys(wahlkreisRows[0]).filter(key => key.startsWith('D') && key.length <= 3);
+    
+    wahlkreisRows.forEach(row => {
+        // Sum up votes per party
+        partyColumns.forEach(col => {
+            const votes = parseInt(row[col] || '0', 10);
+            if (!isNaN(votes) && votes > 0) {
+                const partyName = getPartyNameFromColumn(col, row);
+                if (!results.parteien[partyName]) {
+                    results.parteien[partyName] = 0;
+                }
+                results.parteien[partyName] += votes;
+                results.totalStimmen += votes;
+            }
+        });
+        
+        // Track Schnellmeldungen
+        const anz = parseInt(row['anz-schnellmeldungen'] || '0', 10);
+        const max = parseInt(row['max-schnellmeldungen'] || '0', 10);
+        results.schnellmeldungen.total += anz;
+        results.schnellmeldungen.max += max;
+    });
+    
+    // Calculate percentages
+    Object.keys(results.parteien).forEach(party => {
+        results.parteien[party] = {
+            stimmen: results.parteien[party],
+            prozent: results.totalStimmen > 0 ? (results.parteien[party] / results.totalStimmen * 100) : 0
+        };
+    });
+    
+    // Find winner
+    let winner = null;
+    let maxVotes = 0;
+    Object.keys(results.parteien).forEach(party => {
+        if (results.parteien[party].stimmen > maxVotes) {
+            maxVotes = results.parteien[party].stimmen;
+            winner = party;
+        }
+    });
+    results.winner = winner;
+    
+    // Calculate margin (difference to second place)
+    const sortedParties = Object.keys(results.parteien)
+        .map(party => ({ party, prozent: results.parteien[party].prozent }))
+        .sort((a, b) => b.prozent - a.prozent);
+    
+    if (sortedParties.length >= 2) {
+        results.margin = sortedParties[0].prozent - sortedParties[1].prozent;
+    } else {
+        results.margin = sortedParties[0]?.prozent || 0;
+    }
+    
+    return results;
+}
+
+// Try to fetch CSV from multiple URL patterns
+async function tryFetchCSV(urls) {
+    for (const url of urls) {
+        try {
+            const data = await fetchCSV(url);
+            if (data && data.length > 0) {
+                return { data, url };
+            }
+        } catch (error) {
+            // Continue to next URL
+        }
+    }
+    return null;
+}
+
+// Fetch Wahlergebnisse for all Wahlkreise
+async function fetchWahlergebnisse() {
+    const datumInput = document.getElementById('wahlabend-datum');
+    const wahldatum = datumInput.value.trim() || WAHLABEND_CONFIG.defaultWahldatum;
+    const statusDiv = document.getElementById('wahlabend-status');
+    const fetchBtn = document.getElementById('fetch-results-btn');
+    const resultsDiv = document.getElementById('wahlabend-results');
+    
+    // Validate date format
+    if (!/^\d{8}$/.test(wahldatum)) {
+        statusDiv.textContent = 'Fehler: Ungültiges Datumsformat. Bitte YYYYMMDD verwenden (z.B. 20260308).';
+        statusDiv.className = 'wahlabend-status error';
+        return;
+    }
+    
+    statusDiv.textContent = 'Lade Daten...';
+    statusDiv.className = 'wahlabend-status info';
+    fetchBtn.disabled = true;
+    resultsDiv.classList.add('hidden');
+    
+    const results = {};
+    const errors = [];
+    let completed = 0;
+    const total = Object.keys(AGS_MAPPING).length;
+    const wahljahr = wahldatum.substring(0, 4);
+    
+    // Fetch data for each AGS
+    const fetchPromises = Object.keys(AGS_MAPPING).map(async (ags) => {
+        const agsInfo = AGS_MAPPING[ags];
+        const wahlkreise = agsInfo.wahlkreise;
+        
+        // Try to fetch Landkreis-level CSV first (contains all Wahlkreise in that Kreis)
+        const landkreisUrls = [
+            `${WAHLABEND_CONFIG.baseUrl}/wahltermin-${wahldatum}/${ags}/html5/Open-Data-Landtagswahl-BW-${wahljahr}-_Land-BW_172-252.csv`,
+            `${WAHLABEND_CONFIG.baseUrl}/wahltermin-${wahldatum}/${ags}/html5/Open-Data-Landtagswahl-BW-${wahljahr}-_Land-BW_1723.csv`,
+            `${WAHLABEND_CONFIG.baseUrl}/wahltermin-${wahldatum}/${ags}/html5/Open-Data-Landtagswahl-BW-${wahljahr}-Gemeinden-_Wahlkreis-*.csv`
+        ];
+        
+        let landkreisData = null;
+        try {
+            const result = await tryFetchCSV(landkreisUrls);
+            if (result) {
+                landkreisData = result.data;
+            }
+        } catch (error) {
+            // Continue to try individual Wahlkreis files
+        }
+        
+        // For each Wahlkreis, try to fetch specific data
+        for (const wkId of wahlkreise) {
+            try {
+                const wahlkreisUrls = [
+                    `${WAHLABEND_CONFIG.baseUrl}/wahltermin-${wahldatum}/${ags}/html5/Open-Data-Landtagswahl-BW-${wahljahr}-Bezirke-_Wahlkreis-${wkId}_.csv`,
+                    `${WAHLABEND_CONFIG.baseUrl}/wahltermin-${wahldatum}/${ags}/html5/Open-Data-Landtagswahl-BW-${wahljahr}-Gemeinden-_Wahlkreis-${wkId}_.csv`
+                ];
+                
+                let csvData = null;
+                const result = await tryFetchCSV(wahlkreisUrls);
+                if (result) {
+                    csvData = result.data;
+                } else if (landkreisData) {
+                    // Fallback to Landkreis data
+                    csvData = landkreisData;
+                }
+                
+                if (csvData) {
+                    const wkResults = extractWahlkreisResults(csvData, wkId);
+                    if (wkResults) {
+                        results[wkId] = wkResults;
+                    }
+                } else {
+                    errors.push({ wahlkreis: wkId, ags: ags, error: 'Keine CSV-Datei gefunden' });
+                }
+            } catch (error) {
+                errors.push({ wahlkreis: wkId, ags: ags, error: error.message });
+            }
+        }
+        
+        completed++;
+        statusDiv.textContent = `Lade Daten... ${completed}/${total} Verwaltungseinheiten abgerufen`;
+    });
+    
+    try {
+        await Promise.allSettled(fetchPromises);
+        
+        wahlabendResults = results;
+        
+        if (Object.keys(results).length === 0) {
+            let errorMsg = `Keine Daten gefunden. Mögliche Ursachen:\n`;
+            errorMsg += `1) Falsches Datum (aktuell: ${wahldatum})\n`;
+            errorMsg += `2) Daten noch nicht verfügbar\n`;
+            errorMsg += `3) CORS-Fehler (Browser blockiert Cross-Origin-Requests)\n`;
+            errorMsg += `4) URL-Struktur hat sich geändert\n\n`;
+            errorMsg += `Fehler bei ${errors.length} Wahlkreisen.`;
+            statusDiv.textContent = errorMsg;
+            statusDiv.className = 'wahlabend-status error';
+        } else {
+            statusDiv.textContent = `Erfolgreich: ${Object.keys(results).length} Wahlkreise geladen. ${errors.length > 0 ? `(${errors.length} Fehler - siehe Konsole für Details)` : ''}`;
+            statusDiv.className = 'wahlabend-status success';
+            if (errors.length > 0) {
+                console.warn('Fehler beim Abrufen:', errors);
+            }
+            displayLiveResults();
+        }
+    } catch (error) {
+        statusDiv.textContent = `Fehler beim Abrufen der Daten: ${error.message}`;
+        statusDiv.className = 'wahlabend-status error';
+        console.error('Fetch error:', error);
+    } finally {
+        fetchBtn.disabled = false;
+    }
+}
+
+// Display Live Results
+function displayLiveResults() {
+    if (!wahlabendResults || Object.keys(wahlabendResults).length === 0) {
+        return;
+    }
+    
+    const resultsDiv = document.getElementById('wahlabend-results');
+    const mandateOverview = document.getElementById('wahlabend-mandate-overview');
+    const tbody = document.getElementById('wahlabend-tbody');
+    
+    resultsDiv.classList.remove('hidden');
+    
+    // Calculate mandate count per party
+    const mandateCount = {};
+    Object.keys(PARTY_CONFIG).forEach(party => {
+        mandateCount[party] = 0;
+    });
+    
+    Object.keys(wahlabendResults).forEach(wkId => {
+        const result = wahlabendResults[wkId];
+        if (result.winner && mandateCount.hasOwnProperty(result.winner)) {
+            mandateCount[result.winner]++;
+        }
+    });
+    
+    // Display mandate overview
+    mandateOverview.innerHTML = '';
+    const sortedParties = Object.entries(mandateCount)
+        .filter(([party, count]) => count > 0)
+        .sort((a, b) => b[1] - a[1]);
+    
+    sortedParties.forEach(([party, count]) => {
+        const partyConfig = PARTY_CONFIG[party] || { color: 'party-other', name: party };
+        const card = document.createElement('div');
+        card.className = `mandate-card ${partyConfig.color}`;
+        card.innerHTML = `
+            <div class="party-name">${partyConfig.name}</div>
+            <div class="mandate-count">${count}</div>
+            <div class="mandate-change neutral">Direktmandate</div>
+        `;
+        mandateOverview.appendChild(card);
+    });
+    
+    // Display detailed table
+    tbody.innerHTML = '';
+    
+    // Sort Wahlkreise by ID
+    const sortedWkIds = Object.keys(wahlabendResults)
+        .map(id => parseInt(id, 10))
+        .sort((a, b) => a - b);
+    
+    sortedWkIds.forEach(wkId => {
+        const result = wahlabendResults[wkId];
+        const wahlkreis = WAHLKREISE_2021.find(wk => wk.id === wkId);
+        const wahlkreisName = wahlkreis ? wahlkreis.name : `WK ${wkId}`;
+        
+        const row = document.createElement('tr');
+        row.className = result.schnellmeldungen.total < result.schnellmeldungen.max ? 'pending' : '';
+        
+        const winnerClass = result.winner ? (PARTY_CONFIG[result.winner]?.color || 'party-other') : 'party-other';
+        const winnerName = result.winner || '–';
+        const stimmenText = result.totalStimmen > 0 ? result.totalStimmen.toLocaleString('de-DE') : '–';
+        const vorsprungText = result.margin !== undefined ? `+${result.margin.toFixed(1)}%` : '–';
+        const schnellmeldungenText = result.schnellmeldungen.max > 0 
+            ? `${result.schnellmeldungen.total}/${result.schnellmeldungen.max}`
+            : '–';
+        
+        let statusBadge = '';
+        if (result.schnellmeldungen.max === 0) {
+            statusBadge = '<span class="status-badge pending">Keine Daten</span>';
+        } else if (result.schnellmeldungen.total === result.schnellmeldungen.max) {
+            statusBadge = '<span class="status-badge complete">Vollständig</span>';
+        } else if (result.schnellmeldungen.total > 0) {
+            statusBadge = '<span class="status-badge partial">Teilweise</span>';
+        } else {
+            statusBadge = '<span class="status-badge pending">Ausstehend</span>';
+        }
+        
+        row.innerHTML = `
+            <td class="wk-id">${wkId}</td>
+            <td class="wk-name">${wahlkreisName}</td>
+            <td><span class="wk-winner ${winnerClass}">${winnerName}</span></td>
+            <td class="wk-stimmen">${stimmenText}</td>
+            <td class="wk-vorsprung">${vorsprungText}</td>
+            <td class="wk-schnellmeldungen">${schnellmeldungenText}</td>
+            <td class="wk-status">${statusBadge}</td>
+        `;
+        
+        tbody.appendChild(row);
+    });
+    
+    // Also show Wahlkreise without results
+    WAHLKREISE_2021.forEach(wahlkreis => {
+        if (!wahlabendResults[wahlkreis.id]) {
+            const row = document.createElement('tr');
+            row.className = 'pending';
+            row.innerHTML = `
+                <td class="wk-id">${wahlkreis.id}</td>
+                <td class="wk-name">${wahlkreis.name}</td>
+                <td><span class="wk-winner party-other">–</span></td>
+                <td class="wk-stimmen">–</td>
+                <td class="wk-vorsprung">–</td>
+                <td class="wk-schnellmeldungen">–</td>
+                <td class="wk-status"><span class="status-badge pending">Keine Daten</span></td>
+            `;
+            tbody.appendChild(row);
+        }
+    });
+}
+
+// Make functions globally available
+window.toggleWahlabendSection = toggleWahlabendSection;
+window.checkWahlabendPassword = checkWahlabendPassword;
+window.fetchWahlergebnisse = fetchWahlergebnisse;

@@ -144,6 +144,66 @@
                 </div>
             </div>
         </div>
+
+        <!-- Wahlabend Section -->
+        <div class="wahlabend-section hidden" id="wahlabend-section">
+            <div class="wahlabend-login" id="wahlabend-login">
+                <h2>Wahlabend</h2>
+                <p class="wahlabend-description">Zugang zu Live-Wahlergebnissen aus allen Wahlkreisen</p>
+                <div class="wahlabend-password-box">
+                    <input type="password" id="wahlabend-password" placeholder="Passwort eingeben" autocomplete="off">
+                    <button class="btn-primary" onclick="checkWahlabendPassword()">Zugang</button>
+                </div>
+                <div id="wahlabend-password-error" class="wahlabend-error hidden"></div>
+            </div>
+            
+            <div class="wahlabend-content hidden" id="wahlabend-content">
+                <h2>Live-Wahlergebnisse</h2>
+                
+                <div class="wahlabend-settings">
+                    <div class="setting-item">
+                        <label for="wahlabend-datum">Wahldatum (YYYYMMDD):</label>
+                        <input type="text" id="wahlabend-datum" value="20260308" placeholder="20260308" maxlength="8">
+                    </div>
+                    <div class="setting-item">
+                        <button class="btn-primary" onclick="fetchWahlergebnisse()" id="fetch-results-btn">Daten abrufen</button>
+                        <button class="btn-secondary" onclick="toggleWahlabendSection()">Schließen</button>
+                    </div>
+                    <div id="wahlabend-status" class="wahlabend-status"></div>
+                </div>
+
+                <div id="wahlabend-results" class="wahlabend-results hidden">
+                    <div class="wahlabend-summary">
+                        <h3>Direktmandate-Übersicht</h3>
+                        <div id="wahlabend-mandate-overview" class="mandate-overview">
+                            <!-- Wird dynamisch gefüllt -->
+                        </div>
+                    </div>
+
+                    <div class="wahlabend-details">
+                        <h3>Alle 70 Wahlkreise</h3>
+                        <div class="wahlabend-table-container">
+                            <table id="wahlabend-table" class="wahlabend-table">
+                                <thead>
+                                    <tr>
+                                        <th>WK</th>
+                                        <th>Name</th>
+                                        <th>Gewinner</th>
+                                        <th>Erststimmen</th>
+                                        <th>Vorsprung</th>
+                                        <th>Schnellmeldungen</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="wahlabend-tbody">
+                                    <!-- Wird dynamisch gefüllt -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Wahlkreis Detail Modal -->
@@ -177,6 +237,9 @@
             </div>
         </div>
     </div>
+
+    <!-- Wahlabend Toggle Button -->
+    <button class="wahlabend-toggle" onclick="toggleWahlabendSection()" id="wahlabend-toggle-btn">Wahlabend</button>
 
     <script src="script.js"></script>
 </body>
