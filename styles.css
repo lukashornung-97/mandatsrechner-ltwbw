@@ -1256,6 +1256,28 @@ h3 {
     color: #667eea;
 }
 
+.wahlabend-table .wk-wahrscheinlichkeit {
+    text-align: right;
+    font-weight: 600;
+    font-size: 0.9em;
+}
+
+.wahlabend-table .wk-wahrscheinlichkeit.probability-high {
+    color: #28a745;
+}
+
+.wahlabend-table .wk-wahrscheinlichkeit.probability-medium {
+    color: #ffc107;
+}
+
+.wahlabend-table .wk-wahrscheinlichkeit.probability-low {
+    color: #fd7e14;
+}
+
+.wahlabend-table .wk-wahrscheinlichkeit.probability-very-low {
+    color: #dc3545;
+}
+
 .wahlabend-table .wk-schnellmeldungen {
     text-align: center;
     font-size: 0.85em;
@@ -1295,27 +1317,31 @@ h3 {
     color: #721c24;
 }
 
+/* Footer */
+.page-footer {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 2px solid #e0e0e0;
+    text-align: center;
+}
+
 /* Wahlabend Toggle Button */
 .wahlabend-toggle {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    padding: 15px 25px;
+    padding: 6px 12px;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     border: none;
-    border-radius: 50px;
-    font-size: 1em;
-    font-weight: 600;
+    border-radius: 4px;
+    font-size: 0.75em;
+    font-weight: 500;
     cursor: pointer;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-    z-index: 100;
-    transition: all 0.3s;
+    transition: all 0.2s;
+    display: inline-block;
 }
 
 .wahlabend-toggle:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.5);
+    background: linear-gradient(135deg, #5568d3 0%, #6a4190 100%);
+    transform: translateY(-1px);
 }
 
 .wahlabend-toggle:active {
@@ -1379,9 +1405,7 @@ h3 {
     }
     
     .wahlabend-toggle {
-        bottom: 10px;
-        right: 10px;
-        padding: 12px 20px;
-        font-size: 0.9em;
+        padding: 5px 10px;
+        font-size: 0.7em;
     }
 }

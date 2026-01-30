@@ -1906,6 +1906,80 @@ async function fetchWahlergebnisse() {
     }
 }
 
+// Calculate statistical probability that current leader will win
+// Based on current margin and remaining votes to count
+function calculateWinProbability(result) {
+    if (!result.winner || result.auszahlungsgrad === undefined || result.auszahlungsgrad >= 1.0) {
+        // If fully counted or no winner, probability is 100% or 0%
+        return result.auszahlungsgrad >= 1.0 ? 100 : 0;
+    }
+    
+    if (result.totalStimmen === 0 || result.margin === undefined) {
+        return 0;
+    }
+    
+    // Get top two parties
+    const sortedParties = Object.keys(result.parteien)
+        .map(party => ({
+            party,
+            stimmen: result.parteien[party].stimmen,
+            prozent: result.parteien[party].prozent
+        }))
+        .sort((a, b) => b.prozent - a.prozent);
+    
+    if (sortedParties.length < 2) {
+        return 100; // Only one party, certain win
+    }
+    
+    const leader = sortedParties[0];
+    const runnerUp = sortedParties[1];
+    
+    // Current margin in absolute votes
+    const currentMarginVotes = leader.stimmen - runnerUp.stimmen;
+    
+    // Remaining votes to count
+    const remainingVotes = result.totalStimmen / result.auszahlungsgrad - result.totalStimmen;
+    
+    // If margin is larger than remaining votes, it's certain
+    if (currentMarginVotes > remainingVotes) {
+        return 100;
+    }
+    
+    // If runner-up needs more votes than remaining, leader wins
+    const votesNeededForRunnerUp = currentMarginVotes + 1; // Need to overcome margin + 1
+    if (votesNeededForRunnerUp > remainingVotes) {
+        return 100;
+    }
+    
+    // Statistical approach: Assume remaining votes are distributed proportionally
+    // But with some uncertainty. We use a normal approximation.
+    // The probability that runner-up gets enough votes to win
+    
+    // Expected votes for runner-up from remaining votes (proportional to current share)
+    const runnerUpCurrentShare = runnerUp.stimmen / result.totalStimmen;
+    const expectedRunnerUpVotes = remainingVotes * runnerUpCurrentShare;
+    
+    // Standard deviation (simplified: sqrt(n * p * (1-p)) for binomial)
+    // We use a conservative estimate
+    const stdDev = Math.sqrt(remainingVotes * runnerUpCurrentShare * (1 - runnerUpCurrentShare));
+    
+    // Votes needed for runner-up to win
+    const votesNeeded = currentMarginVotes + 1;
+    
+    // Z-score: how many standard deviations away
+    const zScore = (votesNeeded - expectedRunnerUpVotes) / (stdDev || 1);
+    
+    // Convert to probability using normal CDF approximation
+    // Using error function approximation: P(Z > z) ≈ 0.5 * (1 - erf(z/√2))
+    // For simplicity, we use a sigmoid-like function
+    const probabilityRunnerUpWins = 0.5 * (1 - Math.tanh(zScore / Math.sqrt(2)));
+    
+    // Probability that leader wins = 1 - probability runner-up wins
+    const winProbability = Math.max(0, Math.min(100, (1 - probabilityRunnerUpWins) * 100));
+    
+    return winProbability;
+}
+
 // Display Live Results
 function displayLiveResults() {
     if (!wahlabendResults || Object.keys(wahlabendResults).length === 0) {
@@ -1981,6 +2055,26 @@ function displayLiveResults() {
             ? `${result.schnellmeldungen.total}/${result.schnellmeldungen.max}`
             : '–';
         
+        // Calculate win probability
+        const winProbability = calculateWinProbability(result);
+        let probabilityText = '–';
+        let probabilityClass = '';
+        if (result.winner && result.auszahlungsgrad !== undefined && result.auszahlungsgrad < 1.0) {
+            probabilityText = winProbability.toFixed(0) + '%';
+            if (winProbability >= 95) {
+                probabilityClass = 'probability-high';
+            } else if (winProbability >= 75) {
+                probabilityClass = 'probability-medium';
+            } else if (winProbability >= 50) {
+                probabilityClass = 'probability-low';
+            } else {
+                probabilityClass = 'probability-very-low';
+            }
+        } else if (result.auszahlungsgrad >= 1.0) {
+            probabilityText = '100%';
+            probabilityClass = 'probability-high';
+        }
+        
         let statusBadge = '';
         if (result.schnellmeldungen.max === 0) {
             statusBadge = '<span class="status-badge pending">Keine Daten</span>';
@@ -1999,6 +2093,7 @@ function displayLiveResults() {
             <td class="wk-auszahlung">${auszahlungsgrad}</td>
             <td class="wk-stimmen">${stimmenText}</td>
             <td class="wk-vorsprung">${vorsprungText}</td>
+            <td class="wk-wahrscheinlichkeit ${probabilityClass}">${probabilityText}</td>
             <td class="wk-schnellmeldungen">${schnellmeldungenText}</td>
             <td class="wk-status">${statusBadge}</td>
         `;
@@ -2018,6 +2113,7 @@ function displayLiveResults() {
                 <td class="wk-auszahlung">–</td>
                 <td class="wk-stimmen">–</td>
                 <td class="wk-vorsprung">–</td>
+                <td class="wk-wahrscheinlichkeit">–</td>
                 <td class="wk-schnellmeldungen">–</td>
                 <td class="wk-status"><span class="status-badge pending">Keine Daten</span></td>
             `;
