@@ -207,10 +207,10 @@ let hasCalculated = false; // Wurde im Auto-Modus schon berechnet?
 // Initialize default parties with current polling values
 function initParties() {
     parties = [
-        { name: 'CDU', percentage: 28, directMandates: 0 },
-        { name: 'Grüne', percentage: 23, directMandates: 0 },
+        { name: 'CDU', percentage: 29, directMandates: 0 },
+        { name: 'Grüne', percentage: 21, directMandates: 0 },
         { name: 'AfD', percentage: 20, directMandates: 0 },
-        { name: 'SPD', percentage: 8, directMandates: 0 },
+        { name: 'SPD', percentage: 10, directMandates: 0 },
         { name: 'Linke', percentage: 7, directMandates: 0 },
         { name: 'FDP', percentage: 5, directMandates: 0 }
     ];
