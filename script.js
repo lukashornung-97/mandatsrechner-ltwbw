@@ -1382,6 +1382,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.toggleWahlabendSection = toggleWahlabendSection;
     window.checkWahlabendPassword = checkWahlabendPassword;
     window.fetchWahlergebnisse = fetchWahlergebnisse;
+    window.toggleDummyData = toggleDummyData;
     
     // Allow Enter key to submit password
     const passwordInput = document.getElementById('wahlabend-password');
@@ -1480,6 +1481,7 @@ const WAHLABEND_CONFIG = {
 // Wahlabend State
 let wahlabendAuthenticated = false;
 let wahlabendResults = null;
+let useDummyData = false;
 
 // Toggle Wahlabend Section
 function toggleWahlabendSection() {
@@ -1577,6 +1579,83 @@ function getPartyNameFromColumn(columnName, row) {
     return partyMapping[columnName] || `Partei ${columnName}`;
 }
 
+// Generate dummy data based on 2021 results with partial counting simulation
+function generateDummyData() {
+    const results = {};
+    
+    WAHLKREISE_2021.forEach(wahlkreis => {
+        // Simulate partial counting (random between 20% and 100%)
+        const auszahlungsgrad = Math.random() * 0.8 + 0.2; // 20% bis 100%
+        
+        // Get 2021 results as base
+        const baseResults = wahlkreis.erststimmen;
+        
+        // Simulate current results with some variation (±5%)
+        const parteien = {};
+        let totalStimmen = 0;
+        
+        Object.keys(baseResults).forEach(party => {
+            const basePercent = baseResults[party];
+            // Add some random variation (±5%)
+            const variation = (Math.random() - 0.5) * 0.1; // -5% to +5%
+            const currentPercent = Math.max(0, Math.min(100, basePercent + variation));
+            
+            // Simulate absolute votes (assuming ~100k voters per Wahlkreis)
+            const simulatedVotes = Math.round(100000 * auszahlungsgrad * currentPercent / 100);
+            parteien[party] = {
+                stimmen: simulatedVotes,
+                prozent: currentPercent
+            };
+            totalStimmen += simulatedVotes;
+        });
+        
+        // Recalculate percentages based on actual votes
+        Object.keys(parteien).forEach(party => {
+            parteien[party].prozent = totalStimmen > 0 
+                ? (parteien[party].stimmen / totalStimmen * 100) 
+                : 0;
+        });
+        
+        // Find winner
+        let winner = null;
+        let maxPercent = 0;
+        Object.keys(parteien).forEach(party => {
+            if (parteien[party].prozent > maxPercent) {
+                maxPercent = parteien[party].prozent;
+                winner = party;
+            }
+        });
+        
+        // Calculate margin to second place
+        const sortedParties = Object.keys(parteien)
+            .map(party => ({ party, prozent: parteien[party].prozent }))
+            .sort((a, b) => b.prozent - a.prozent);
+        
+        const margin = sortedParties.length >= 2 
+            ? sortedParties[0].prozent - sortedParties[1].prozent 
+            : sortedParties[0]?.prozent || 0;
+        
+        // Simulate Schnellmeldungen (typically 1-10 per Wahlkreis)
+        const maxSchnellmeldungen = Math.floor(Math.random() * 9) + 2; // 2-10
+        const anzSchnellmeldungen = Math.floor(maxSchnellmeldungen * auszahlungsgrad);
+        
+        results[wahlkreis.id] = {
+            wahlkreisId: wahlkreis.id,
+            totalStimmen: totalStimmen,
+            parteien: parteien,
+            winner: winner,
+            margin: margin,
+            auszahlungsgrad: auszahlungsgrad, // 0.0 to 1.0
+            schnellmeldungen: {
+                total: anzSchnellmeldungen,
+                max: maxSchnellmeldungen
+            }
+        };
+    });
+    
+    return results;
+}
+
 // Extract Wahlkreis results from CSV data
 function extractWahlkreisResults(csvData, wahlkreisId) {
     // Find rows for this Wahlkreis
@@ -1657,6 +1736,13 @@ function extractWahlkreisResults(csvData, wahlkreisId) {
         results.margin = sortedParties[0]?.prozent || 0;
     }
     
+    // Calculate Auszählungsgrad (percentage of Schnellmeldungen)
+    if (results.schnellmeldungen.max > 0) {
+        results.auszahlungsgrad = results.schnellmeldungen.total / results.schnellmeldungen.max;
+    } else {
+        results.auszahlungsgrad = 0;
+    }
+    
     return results;
 }
 
@@ -1675,6 +1761,12 @@ async function tryFetchCSV(urls) {
     return null;
 }
 
+// Toggle dummy data mode
+function toggleDummyData() {
+    const checkbox = document.getElementById('use-dummy-data');
+    useDummyData = checkbox.checked;
+}
+
 // Fetch Wahlergebnisse for all Wahlkreise
 async function fetchWahlergebnisse() {
     const datumInput = document.getElementById('wahlabend-datum');
@@ -1687,6 +1779,28 @@ async function fetchWahlergebnisse() {
     if (!/^\d{8}$/.test(wahldatum)) {
         statusDiv.textContent = 'Fehler: Ungültiges Datumsformat. Bitte YYYYMMDD verwenden (z.B. 20260308).';
         statusDiv.className = 'wahlabend-status error';
+        return;
+    }
+    
+    // Check if dummy data should be used
+    const dummyCheckbox = document.getElementById('use-dummy-data');
+    useDummyData = dummyCheckbox ? dummyCheckbox.checked : false;
+    
+    if (useDummyData) {
+        // Generate dummy data immediately
+        statusDiv.textContent = 'Generiere Dummy-Daten...';
+        statusDiv.className = 'wahlabend-status info';
+        fetchBtn.disabled = true;
+        resultsDiv.classList.add('hidden');
+        
+        // Simulate loading delay
+        setTimeout(() => {
+            wahlabendResults = generateDummyData();
+            statusDiv.textContent = `Dummy-Daten geladen: ${Object.keys(wahlabendResults).length} Wahlkreise`;
+            statusDiv.className = 'wahlabend-status success';
+            displayLiveResults();
+            fetchBtn.disabled = false;
+        }, 500);
         return;
     }
     
@@ -1849,6 +1963,14 @@ function displayLiveResults() {
         
         const winnerClass = result.winner ? (PARTY_CONFIG[result.winner]?.color || 'party-other') : 'party-other';
         const winnerName = result.winner || '–';
+        
+        // Auszählungsgrad in Prozent
+        const auszahlungsgrad = result.auszahlungsgrad !== undefined 
+            ? (result.auszahlungsgrad * 100).toFixed(1) + '%'
+            : (result.schnellmeldungen.max > 0 
+                ? ((result.schnellmeldungen.total / result.schnellmeldungen.max) * 100).toFixed(1) + '%'
+                : '–');
+        
         const stimmenText = result.totalStimmen > 0 ? result.totalStimmen.toLocaleString('de-DE') : '–';
         const vorsprungText = result.margin !== undefined ? `+${result.margin.toFixed(1)}%` : '–';
         const schnellmeldungenText = result.schnellmeldungen.max > 0 
@@ -1870,6 +1992,7 @@ function displayLiveResults() {
             <td class="wk-id">${wkId}</td>
             <td class="wk-name">${wahlkreisName}</td>
             <td><span class="wk-winner ${winnerClass}">${winnerName}</span></td>
+            <td class="wk-auszahlung">${auszahlungsgrad}</td>
             <td class="wk-stimmen">${stimmenText}</td>
             <td class="wk-vorsprung">${vorsprungText}</td>
             <td class="wk-schnellmeldungen">${schnellmeldungenText}</td>
@@ -1888,6 +2011,7 @@ function displayLiveResults() {
                 <td class="wk-id">${wahlkreis.id}</td>
                 <td class="wk-name">${wahlkreis.name}</td>
                 <td><span class="wk-winner party-other">–</span></td>
+                <td class="wk-auszahlung">–</td>
                 <td class="wk-stimmen">–</td>
                 <td class="wk-vorsprung">–</td>
                 <td class="wk-schnellmeldungen">–</td>

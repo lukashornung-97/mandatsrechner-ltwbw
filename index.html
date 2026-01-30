@@ -166,6 +166,12 @@
                         <input type="text" id="wahlabend-datum" value="20260308" placeholder="20260308" maxlength="8">
                     </div>
                     <div class="setting-item">
+                        <label>
+                            <input type="checkbox" id="use-dummy-data" checked onchange="toggleDummyData()">
+                            Dummy-Daten verwenden (für Tests)
+                        </label>
+                    </div>
+                    <div class="setting-item">
                         <button class="btn-primary" onclick="fetchWahlergebnisse()" id="fetch-results-btn">Daten abrufen</button>
                         <button class="btn-secondary" onclick="toggleWahlabendSection()">Schließen</button>
                     </div>
@@ -189,6 +195,7 @@
                                         <th>WK</th>
                                         <th>Name</th>
                                         <th>Gewinner</th>
+                                        <th>Auszählung</th>
                                         <th>Erststimmen</th>
                                         <th>Vorsprung</th>
                                         <th>Schnellmeldungen</th>

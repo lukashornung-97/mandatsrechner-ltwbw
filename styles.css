@@ -1243,6 +1243,13 @@ h3 {
     font-size: 0.9em;
 }
 
+.wahlabend-table .wk-auszahlung {
+    text-align: right;
+    font-weight: 600;
+    color: #764ba2;
+    font-size: 0.9em;
+}
+
 .wahlabend-table .wk-vorsprung {
     text-align: right;
     font-weight: 600;
