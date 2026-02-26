@@ -201,8 +201,7 @@ const LANDESERGEBNIS_2016 = {
 };
 
 let parties = [];
-let currentMode = 'manual'; // 'manual' oder 'auto'
-let hasCalculated = false; // Wurde im Auto-Modus schon berechnet?
+let hasCalculated = false; // Wurden Direktmandate schon berechnet?
 
 // Initialize default parties with current polling values
 function initParties() {
@@ -217,70 +216,18 @@ function initParties() {
     renderPartyTable();
 }
 
-// Wechsle zwischen Manuell und Auto-Modus
-function setMode(mode) {
-    currentMode = mode;
-    
-    // Bei Moduswechsel: hasCalculated zurücksetzen
-    if (mode === 'auto') {
-        hasCalculated = false;
-    }
-    
-    // Update Button-Styling
-    document.getElementById('mode-manual').classList.toggle('active', mode === 'manual');
-    document.getElementById('mode-auto').classList.toggle('active', mode === 'auto');
-    
-    // Update Info-Text
-    const modeInfo = document.getElementById('mode-info');
-    if (mode === 'manual') {
-        modeInfo.innerHTML = '<strong>Landtag:</strong> Mindestgröße 120 Sitze | <strong>Direktmandate:</strong> 70 (manuelle Eingabe)';
-    } else {
-        modeInfo.innerHTML = '<strong>Landtag:</strong> Mindestgröße 120 Sitze | <strong>Direktmandate:</strong> 70 (automatisch aus Wahlergebnis 2021 hochgerechnet)';
-    }
-    
-    // Prognose-Section nur im Auto-Modus anzeigen
-    const prognoseSection = document.querySelector('.prognose-section');
-    if (prognoseSection) {
-        prognoseSection.style.display = mode === 'auto' ? 'block' : 'none';
-    }
-    
-    // Swing-Methode Selector anzeigen/verstecken
-    const swingSelector = document.getElementById('swing-method-container');
-    if (swingSelector) {
-        swingSelector.style.display = mode === 'auto' ? 'flex' : 'none';
-    }
-    
-    // "Sitzverteilung berechnen" Button im Auto-Modus ausblenden
-    const calculateBtn = document.getElementById('calculate-btn');
-    if (calculateBtn) {
-        calculateBtn.style.display = mode === 'auto' ? 'none' : 'inline-block';
-    }
-    
-    // Tabelle neu rendern
-    renderPartyTable();
-}
 
 // Render the input table
 function renderPartyTable() {
     const tbody = document.getElementById('party-tbody');
     tbody.innerHTML = '';
     
-    // Update Tabellen-Header je nach Modus
-    const headerRow = document.querySelector('#party-table thead tr');
-    if (headerRow) {
-        const headers = headerRow.querySelectorAll('th');
-        if (headers.length >= 3) {
-            headers[1].textContent = currentMode === 'auto' ? 'Umfragewert (%)' : 'Zweitstimmen (%)';
-            headers[2].textContent = currentMode === 'auto' ? 'Direktmandate (berechnet)' : 'Direktmandate';
-        }
-    }
-    
     parties.forEach((party, index) => {
         const row = document.createElement('tr');
         
-        // Direktmandate-Zelle je nach Modus
+        // Direktmandate-Zelle: editierbares Input-Feld, nach Projektion vorausgefüllt
         let direktmandateCell;
-        if (currentMode === 'manual') {
+        if (hasCalculated) {
             direktmandateCell = `
                 <td>
                     <input type="number" 
@@ -295,12 +242,9 @@ function renderPartyTable() {
                 </td>
             `;
         } else {
-            // Im Auto-Modus: Zeige Platzhalter bis berechnet wurde
-            const displayValue = hasCalculated ? party.directMandates : '–';
-            const cellClass = hasCalculated ? 'direktmandate-value' : 'direktmandate-placeholder';
             direktmandateCell = `
                 <td class="direktmandate-cell">
-                    <span class="${cellClass}" id="direktmandate-${index}">${displayValue}</span>
+                    <span class="direktmandate-placeholder" id="direktmandate-${index}">–</span>
                 </td>
             `;
         }
@@ -376,16 +320,15 @@ function validatePercentageInput(input) {
     parties[index].percentage = Math.max(0, value);
     updateValidationMessage();
     
-    // Im Auto-Modus: Berechnung zurücksetzen wenn Werte geändert werden
-    if (currentMode === 'auto' && hasCalculated) {
+    // Projektion zurücksetzen wenn Umfragewerte geändert werden
+    if (hasCalculated) {
         hasCalculated = false;
         renderPartyTable();
     }
 }
 
-// Validate direct mandate input in real-time (nur im manuellen Modus)
+// Validate direct mandate input in real-time
 function validateDirectMandateInput(input) {
-    if (currentMode !== 'manual') return;
     
     const index = parseInt(input.dataset.index);
     let value = parseInt(input.value) || 0;
@@ -969,12 +912,6 @@ let prognoseResults = null;
 
 // Berechnung der Direktmandate basierend auf Wahlkreis-Ergebnissen
 function autoCalculateDirektmandate() {
-    if (currentMode !== 'auto') return;
-    
-    // Hole die aktuell gewählte Methode
-    const methodSelect = document.getElementById('swing-method');
-    if (!methodSelect) return;
-    
     const method = document.getElementById('swing-method')?.value || 'uniform';
     
     // Hole aktuelle Umfragewerte
@@ -1003,7 +940,6 @@ function autoCalculateDirektmandate() {
             if (method === 'uniform') {
                 prognose = Math.max(0, ergebnis2021 + (umfrage - landesergebnis));
             } else {
-                // Wahlkreis-Profil (Hybrid) Methode
                 prognose = calculateHybridProfile(wahlkreis.id, party, umfrage);
             }
             
@@ -1018,20 +954,18 @@ function autoCalculateDirektmandate() {
         }
     });
     
-    // Update parties array und Anzeige
-    parties.forEach((party, index) => {
+    // Update parties array mit projizierten Werten
+    parties.forEach(party => {
         party.directMandates = mandateCount[party.name] || 0;
-        const cell = document.getElementById(`direktmandate-${index}`);
-        if (cell) {
-            cell.textContent = party.directMandates;
-            cell.className = 'direktmandate-value';
-        }
     });
     
     hasCalculated = true;
+    
+    // Tabelle neu rendern mit editierbaren Feldern
+    renderPartyTable();
     updateValidationMessage();
     
-    // Im Auto-Modus auch direkt die Sitzverteilung berechnen
+    // Sitzverteilung direkt berechnen
     calculateSeats();
 }
 
@@ -1376,7 +1310,6 @@ document.addEventListener('DOMContentLoaded', () => {
     window.removeParty = removeParty;
     window.validatePercentageInput = validatePercentageInput;
     window.validateDirectMandateInput = validateDirectMandateInput;
-    window.setMode = setMode;
     window.closeWahlkreisModal = closeWahlkreisModal;
     window.openWahlkreisModal = openWahlkreisModal;
     window.toggleWahlabendSection = toggleWahlabendSection;
@@ -1402,12 +1335,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Initial validation message update
     updateValidationMessage();
-    
-    // Prognose-Section initial verstecken (startet im manuellen Modus)
-    const prognoseSection = document.querySelector('.prognose-section');
-    if (prognoseSection) {
-        prognoseSection.style.display = 'none';
-    }
 });
 
 // ==========================================

@@ -17,15 +17,7 @@
         <div class="input-section">
             <h2>Eingabe</h2>
             
-            <div class="mode-selector">
-                <button id="mode-manual" class="mode-btn active" onclick="setMode('manual')">
-                    Manuelle Eingabe Direktmandate
-                </button>
-                <button id="mode-auto" class="mode-btn" onclick="setMode('auto')">
-                    Projektion der Direktmandate auf Basis des Wahlergebnis
-                </button>
-            </div>
-            <div id="swing-method-container" class="swing-method-container" style="display: none;">
+            <div id="swing-method-container" class="swing-method-container">
                 <label for="swing-method">Berechnungsmethode:</label>
                 <select id="swing-method">
                     <option value="uniform">Uniform Swing (gleichmäßige Verschiebung)</option>
@@ -35,15 +27,15 @@
             </div>
             
             <div class="info-box">
-                <p id="mode-info"><strong>Landtag:</strong> Mindestgröße 120 Sitze | <strong>Direktmandate:</strong> 70</p>
+                <p><strong>Landtag:</strong> Mindestgröße 120 Sitze | <strong>Direktmandate:</strong> 70 (automatisch aus Wahlergebnis 2021 hochgerechnet)</p>
             </div>
             
             <table id="party-table" class="input-table">
                 <thead>
                     <tr>
                         <th>Partei</th>
-                        <th>Zweitstimmen (%)</th>
-                        <th>Direktmandate</th>
+                        <th>Umfragewert (%)</th>
+                        <th>Direktmandate (Projektion)</th>
                         <th>Aktion</th>
                     </tr>
                 </thead>
