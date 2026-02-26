@@ -1299,7 +1299,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initParties();
     
     document.getElementById('add-party-btn').addEventListener('click', addParty);
-    document.getElementById('calculate-btn').addEventListener('click', calculateSeats);
+    document.getElementById('calculate-btn').addEventListener('click', autoCalculateDirektmandate);
     
     // Prognose Event Listeners
     document.getElementById('calculate-prognose-btn').addEventListener('click', calculateWahlkreisPrognose);
