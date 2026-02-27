@@ -206,11 +206,11 @@ let hasCalculated = false; // Wurden Direktmandate schon berechnet?
 // Initialize default parties with current polling values
 function initParties() {
     parties = [
-        { name: 'CDU', percentage: 29, directMandates: 0 },
-        { name: 'Grüne', percentage: 28, directMandates: 0 },
-        { name: 'AfD', percentage: 18, directMandates: 0 },
-        { name: 'SPD', percentage: 7, directMandates: 0 },
-        { name: 'Linke', percentage: 5.5, directMandates: 0 },
+        { name: 'CDU', percentage: 27, directMandates: 0 },
+        { name: 'Grüne', percentage: 25, directMandates: 0 },
+        { name: 'AfD', percentage: 19, directMandates: 0 },
+        { name: 'SPD', percentage: 9, directMandates: 0 },
+        { name: 'Linke', percentage: 6, directMandates: 0 },
         { name: 'FDP', percentage: 6, directMandates: 0 }
     ];
     renderPartyTable();
