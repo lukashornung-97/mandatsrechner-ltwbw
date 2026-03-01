@@ -361,9 +361,11 @@ function displayResults(data) {
     if (sitzverteilung) {
         currentSitzverteilung = sitzverteilung;
         displaySitzverteilung(sitzverteilung);
+        displaySitzverteilungChart(sitzverteilung);
         setupKoalitionsrechner(sitzverteilung);
     } else {
         document.getElementById('wa-sitzverteilung-section').classList.add('hidden');
+        document.getElementById('wa-chart-section').classList.add('hidden');
         document.getElementById('wa-koalition-section').classList.add('hidden');
     }
 
@@ -440,6 +442,40 @@ function displaySitzverteilung(sv) {
             <td style="text-align:right">${party.ausgleich || 0}</td>
         `;
         tbody.appendChild(row);
+    });
+}
+
+function displaySitzverteilungChart(sv) {
+    const section    = document.getElementById('wa-chart-section');
+    const container  = document.getElementById('wa-chart-bars');
+    container.innerHTML = '';
+
+    if (!sv || sv.parties.length === 0) {
+        section.classList.add('hidden');
+        return;
+    }
+    section.classList.remove('hidden');
+
+    const BAR_MAX_PX = 160; // Höhe des höchsten Balkens in Pixel
+    const sorted     = [...sv.parties].sort((a, b) => b.total - a.total);
+    const maxSeats   = sorted[0].total;
+
+    sorted.forEach(party => {
+        const cfg       = PARTY_CONFIG[party.partei] || { color: '#888888', textColor: 'white' };
+        const barHeight = maxSeats > 0 ? Math.max(3, Math.round(party.total / maxSeats * BAR_MAX_PX)) : 3;
+
+        const col = document.createElement('div');
+        col.className = 'wa-chart-col';
+        col.innerHTML = `
+            <div class="wa-chart-bar-area" style="height:${BAR_MAX_PX + 24}px">
+                <span class="wa-chart-seats">${party.total}</span>
+                <div class="wa-chart-bar"
+                     style="height:${barHeight}px; background:${cfg.color}"></div>
+            </div>
+            <div class="wa-chart-name">${party.partei}</div>
+            <div class="wa-chart-pct">${party.prozent.toFixed(1).replace('.', ',')}%</div>
+        `;
+        container.appendChild(col);
     });
 }
 
