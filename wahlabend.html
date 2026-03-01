@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LTW 2026 – Live-Ergebnisse Baden-Württemberg</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Baden-Württemberg Landtagswahl 2026</h1>
+            <p class="subtitle">Live-Ergebnisse und Sitzverteilung am Wahlabend</p>
+            <p class="beta-notice">Beta-Version, ohne Gewähr der Korrektheit. Feedback: <a href="mailto:lukhornung@gmail.com">lukhornung@gmail.com</a></p>
+        </header>
+
+        <!-- Datenquelle -->
+        <div class="wa-datasource">
+            <h3 style="margin:0 0 14px 0; color:#667eea">Datenquelle</h3>
+            <div class="wa-input-row">
+                <div class="wa-input-group">
+                    <label for="csv-file">CSV-Datei hochladen:</label>
+                    <input type="file" id="csv-file" accept=".csv">
+                    <button class="btn-primary" onclick="loadFromFile()">Laden</button>
+                </div>
+                <div class="wa-input-group wa-url-group">
+                    <label for="csv-url">Oder URL eingeben:</label>
+                    <input type="text" id="csv-url" placeholder="https://wahlen.statistik-bw.de/ltw26/..." class="wa-url-input">
+                    <button class="btn-primary" onclick="loadFromUrl()">Abrufen</button>
+                </div>
+            </div>
+            <div class="wa-refresh-row">
+                <label>
+                    <input type="checkbox" id="auto-refresh" onchange="toggleAutoRefresh()">
+                    Auto-Refresh alle
+                </label>
+                <input type="number" id="refresh-interval" value="60" min="10" max="600" class="wa-interval-input">
+                <span>Sekunden</span>
+                <span id="refresh-countdown" class="wa-countdown hidden"></span>
+            </div>
+            <div id="wa-status" class="wahlabend-status hidden"></div>
+        </div>
+
+        <!-- Auszählungsstand -->
+        <div id="wa-auszaehlungsstand" class="wa-stand hidden">
+            <div class="wa-stand-inner">
+                <div class="wa-stand-text">
+                    <span class="wa-stand-label">Ausgezählt:</span>
+                    <strong><span id="wa-gemeldet">0</span></strong> von
+                    <strong><span id="wa-gesamt">0</span></strong> Wahlbezirken &mdash;
+                    <strong><span id="wa-pct">0,0</span>%</strong>
+                </div>
+                <div class="wa-stand-time">Letzter Abruf: <span id="wa-last-update">–</span></div>
+            </div>
+            <div class="wa-progress-bar">
+                <div class="wa-progress-fill" id="wa-progress-fill" style="width:0%"></div>
+            </div>
+        </div>
+
+        <!-- Direktmandate -->
+        <div id="wa-direktmandate-section" class="wa-section hidden">
+            <h2>Direktmandate <span id="wa-direkt-total" class="wa-section-badge">0 / 70</span></h2>
+            <div id="wa-direktmandate-overview" class="mandate-overview">
+                <p class="wa-no-data">Noch keine Direktmandate ausgezählt.</p>
+            </div>
+        </div>
+
+        <!-- Sitzverteilung -->
+        <div id="wa-sitzverteilung-section" class="wa-section hidden">
+            <h2>Sitzverteilung</h2>
+            <div class="info-box" style="margin-bottom:16px">
+                <p>Berechnet nach Sainte-Laguë/Schepers auf Basis der bisherigen Zweitstimmen (LAND-Aggregat). Bei unvollständiger Auszählung sind die Ergebnisse vorläufig.</p>
+            </div>
+            <div class="summary-box">
+                <div class="summary-item">
+                    <span class="summary-label">Gesamtsitze:</span>
+                    <span id="wa-total-seats" class="summary-value">–</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Überhangmandate:</span>
+                    <span id="wa-overhang-seats" class="summary-value">–</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Ausgleichsmandate:</span>
+                    <span id="wa-compensation-seats" class="summary-value">–</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">5%-Hürde:</span>
+                    <span id="wa-threshold-info" class="summary-value" style="font-size:0.8em; max-width:220px">–</span>
+                </div>
+            </div>
+            <div class="wahlabend-table-container" style="margin-top:16px">
+                <table class="wahlabend-table">
+                    <thead>
+                        <tr>
+                            <th>Partei</th>
+                            <th style="text-align:right">Zweitstimmen</th>
+                            <th style="text-align:right">Anteil</th>
+                            <th style="text-align:right">Direktmandate</th>
+                            <th style="text-align:right">Gesamtsitze</th>
+                            <th style="text-align:right">davon Überhang</th>
+                            <th style="text-align:right">davon Ausgleich</th>
+                        </tr>
+                    </thead>
+                    <tbody id="wa-sitzverteilung-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Koalitionsrechner -->
+        <div id="wa-koalition-section" class="wa-section hidden">
+            <h2>Koalitionsrechner</h2>
+            <div class="coalition-selector">
+                <p>Parteien für die Koalition auswählen:</p>
+                <div id="wa-coalition-checkboxes" class="coalition-checkboxes"></div>
+                <button class="btn-primary" onclick="berechneKoalition()" style="margin-top:14px">Koalition berechnen</button>
+            </div>
+            <div id="wa-coalition-results" class="coalition-results"></div>
+        </div>
+
+        <!-- Wahlkreis-Details -->
+        <div id="wa-wahlkreis-section" class="wa-section hidden">
+            <h2>Alle 70 Wahlkreise</h2>
+            <div class="wahlabend-table-container">
+                <table class="wahlabend-table">
+                    <thead>
+                        <tr>
+                            <th class="wk-id">WK</th>
+                            <th class="wk-name">Wahlkreis</th>
+                            <th>Direktmandat</th>
+                            <th class="wk-auszahlung">Ausgezählt</th>
+                            <th class="wk-stimmen">Stimmführer (vorläufig)</th>
+                            <th class="wk-vorsprung">Vorsprung</th>
+                            <th class="wk-status">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="wa-wahlkreis-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <footer class="page-footer">
+        <a href="index.html" class="wahlabend-toggle" style="text-decoration:none">← Zum Sitzverteilungs-Rechner</a>
+    </footer>
+
+    <script src="wahlabend.js"></script>
+</body>
+</html>
