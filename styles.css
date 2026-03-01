@@ -1579,6 +1579,50 @@ h3 {
 }
 
 /* ============================================================
+   WAHLERGEBNIS-SEKTION (Gesamtsitze-Karten)
+   ============================================================ */
+
+.wa-ergebnis-card .mandate-count {
+    font-size: 2.4em;
+    font-weight: 800;
+    line-height: 1;
+    margin: 6px 0 4px;
+    color: #1a1a2e;
+}
+
+.wa-ergebnis-breakdown {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    font-size: 0.78em;
+    color: #555;
+    margin-top: 4px;
+}
+
+.wa-ueberhang-hint {
+    color: #e67e22;
+    font-weight: 600;
+}
+
+.wa-ergebnis-pct {
+    font-size: 0.75em;
+    color: #888;
+    margin-top: 5px;
+}
+
+.wa-majority-line {
+    margin-top: 18px;
+    padding: 10px 16px;
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 8px;
+    font-size: 0.88em;
+    color: #856404;
+    font-weight: 500;
+    text-align: center;
+}
+
+/* ============================================================
    SITZVERTEILUNG BALKENDIAGRAMM
    ============================================================ */
 

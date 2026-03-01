@@ -356,7 +356,7 @@ function displayResults(data) {
     const { direktmandate, sitzverteilung, gemeldet, gesamt } = data;
 
     updateAuszaehlungsstand(gemeldet, gesamt);
-    displayDirectmandate(direktmandate);
+    displayWahlergebnis(direktmandate, sitzverteilung);
 
     if (sitzverteilung) {
         currentSitzverteilung = sitzverteilung;
@@ -383,35 +383,75 @@ function updateAuszaehlungsstand(gemeldet, gesamt) {
     document.getElementById('wa-last-update').textContent  = new Date().toLocaleTimeString('de-DE');
 }
 
-function displayDirectmandate(direktmandate) {
+function displayWahlergebnis(direktmandate, sitzverteilung) {
     document.getElementById('wa-direktmandate-section').classList.remove('hidden');
 
     const { perPartei } = direktmandate;
     const totalDirekt   = Object.values(perPartei).reduce((s, n) => s + n, 0);
-    document.getElementById('wa-direkt-total').textContent = `${totalDirekt} / 70`;
+    const overview      = document.getElementById('wa-direktmandate-overview');
+    overview.innerHTML  = '';
 
-    const overview = document.getElementById('wa-direktmandate-overview');
-    overview.innerHTML = '';
+    // Wenn Sitzverteilung verfügbar: Gesamtsitze pro Partei anzeigen
+    if (sitzverteilung && sitzverteilung.parties.length > 0) {
+        const totalSeats = sitzverteilung.totalSeats;
+        const majority   = Math.floor(totalSeats / 2) + 1;
 
-    const sorted = Object.entries(perPartei).sort((a, b) => b[1] - a[1]);
+        document.getElementById('wa-direkt-total').textContent =
+            `${totalSeats} Sitze gesamt · Mehrheit: ${majority}`;
 
-    if (sorted.length === 0) {
-        overview.innerHTML = '<p class="wa-no-data">Noch keine Direktmandate ausgezählt.</p>';
-        return;
+        const sorted = [...sitzverteilung.parties].sort((a, b) => b.total - a.total);
+
+        sorted.forEach(party => {
+            const cfg       = PARTY_CONFIG[party.partei] || { color: '#888', textColor: 'white' };
+            const direkt    = party.direktmandate || 0;
+            const liste     = party.total - direkt;
+            const card      = document.createElement('div');
+            card.className             = 'mandate-card wa-ergebnis-card';
+            card.style.borderLeftColor = cfg.color;
+            card.innerHTML = `
+                <div class="party-name" style="color:${cfg.color}">${party.partei}</div>
+                <div class="mandate-count">${party.total}</div>
+                <div class="wa-ergebnis-breakdown">
+                    <span title="Direktmandate">⬛ ${direkt} Direkt</span>
+                    <span title="Listenmandate">📋 ${liste} Liste</span>
+                    ${party.ueberhang ? `<span class="wa-ueberhang-hint" title="Überhangmandate">+${party.ueberhang} Überhang</span>` : ''}
+                </div>
+                <div class="wa-ergebnis-pct">${party.prozent.toFixed(1).replace('.', ',')}% Zweitstimmen</div>
+            `;
+            overview.appendChild(card);
+        });
+
+        // Mehrheitslinie
+        const majorityEl = document.getElementById('wa-majority-line');
+        const majorityLb = document.getElementById('wa-majority-label');
+        majorityEl.classList.remove('hidden');
+        majorityLb.textContent =
+            `Absolute Mehrheit: ${majority} von ${totalSeats} Sitzen · Ausgezählt: ${totalDirekt} / 70 Direktmandate`;
+
+    } else {
+        // Fallback: nur Direktmandate anzeigen
+        document.getElementById('wa-direkt-total').textContent = `${totalDirekt} / 70 Direktmandate`;
+
+        const sorted = Object.entries(perPartei).sort((a, b) => b[1] - a[1]);
+        if (sorted.length === 0) {
+            overview.innerHTML = '<p class="wa-no-data">Noch keine Ergebnisse ausgezählt.</p>';
+            return;
+        }
+        sorted.forEach(([partei, anzahl]) => {
+            const cfg  = PARTY_CONFIG[partei] || { color: '#888', textColor: 'white' };
+            const card = document.createElement('div');
+            card.className             = 'mandate-card';
+            card.style.borderLeftColor = cfg.color;
+            card.innerHTML = `
+                <div class="party-name" style="color:${cfg.color}">${partei}</div>
+                <div class="mandate-count">${anzahl}</div>
+                <div class="mandate-change neutral">Direktmandate (Hochrechnung läuft…)</div>
+            `;
+            overview.appendChild(card);
+        });
+
+        document.getElementById('wa-majority-line').classList.add('hidden');
     }
-
-    sorted.forEach(([partei, anzahl]) => {
-        const cfg  = PARTY_CONFIG[partei] || { color: '#888', textColor: 'white' };
-        const card = document.createElement('div');
-        card.className              = 'mandate-card';
-        card.style.borderLeftColor  = cfg.color;
-        card.innerHTML = `
-            <div class="party-name" style="color:${cfg.color}">${partei}</div>
-            <div class="mandate-count">${anzahl}</div>
-            <div class="mandate-change neutral">Direktmandate</div>
-        `;
-        overview.appendChild(card);
-    });
 }
 
 function displaySitzverteilung(sv) {
