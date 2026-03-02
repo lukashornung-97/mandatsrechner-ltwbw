@@ -57,55 +57,19 @@
             </div>
         </div>
 
-        <!-- Wahlergebnis -->
-        <div id="wa-direktmandate-section" class="wa-section hidden">
-            <h2>Wahlergebnis <span id="wa-direkt-total" class="wa-section-badge">–</span></h2>
-            <div id="wa-direktmandate-overview" class="mandate-overview"></div>
-            <div id="wa-majority-line" class="wa-majority-line hidden">
-                <span id="wa-majority-label"></span>
-            </div>
-        </div>
-
-        <!-- Sitzverteilung -->
+        <!-- Sitzverteilung (kombiniert: aktuell + Hochrechnung) -->
         <div id="wa-sitzverteilung-section" class="wa-section hidden">
-            <h2>Sitzverteilung</h2>
-            <div class="info-box" style="margin-bottom:16px">
-                <p>Berechnet nach Sainte-Laguë/Schepers auf Basis der bisherigen Zweitstimmen (LAND-Aggregat). Bei unvollständiger Auszählung sind die Ergebnisse vorläufig.</p>
+            <h2>Sitzverteilung <span id="wa-sv-badge" class="wa-prognose-badge hidden">inkl. Hochrechnung</span></h2>
+            <div id="wa-sv-info" class="info-box" style="margin-bottom:16px"></div>
+            <div id="wa-sv-summary" class="wa-sv-summary"></div>
+            <div class="wa-chart-scroll">
+                <div id="wa-sv-chart" class="wa-chart-container"></div>
             </div>
-            <div class="summary-box">
-                <div class="summary-item">
-                    <span class="summary-label">Gesamtsitze:</span>
-                    <span id="wa-total-seats" class="summary-value">–</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">Überhangmandate:</span>
-                    <span id="wa-overhang-seats" class="summary-value">–</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">Ausgleichsmandate:</span>
-                    <span id="wa-compensation-seats" class="summary-value">–</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">5%-Hürde:</span>
-                    <span id="wa-threshold-info" class="summary-value" style="font-size:0.8em; max-width:220px">–</span>
-                </div>
+            <div id="wa-sv-legend" class="wa-sv-legend hidden">
+                <span class="wa-legend-item"><span class="wa-legend-solid"></span> Aktueller Stand</span>
+                <span class="wa-legend-item"><span class="wa-legend-hatched"></span> Hochrechnung Direktmandate sowie Überhang- und Ausgleichsmandate</span>
             </div>
-            <div class="wahlabend-table-container" style="margin-top:16px">
-                <table class="wahlabend-table">
-                    <thead>
-                        <tr>
-                            <th>Partei</th>
-                            <th style="text-align:right">Zweitstimmen</th>
-                            <th style="text-align:right">Anteil</th>
-                            <th style="text-align:right">Direktmandate</th>
-                            <th style="text-align:right">Gesamtsitze</th>
-                            <th style="text-align:right">davon Überhang</th>
-                            <th style="text-align:right">davon Ausgleich</th>
-                        </tr>
-                    </thead>
-                    <tbody id="wa-sitzverteilung-tbody"></tbody>
-                </table>
-            </div>
+            <div id="wa-sv-direktmandate" class="wa-sv-direktmandate"></div>
         </div>
 
         <!-- Koalitionsrechner -->
@@ -117,14 +81,6 @@
                 <button class="btn-primary" onclick="berechneKoalition()" style="margin-top:14px">Koalition berechnen</button>
             </div>
             <div id="wa-coalition-results" class="coalition-results"></div>
-        </div>
-
-        <!-- Balkendiagramm Sitzverteilung -->
-        <div id="wa-chart-section" class="wa-section hidden">
-            <h2>Sitzverteilung im Überblick</h2>
-            <div class="wa-chart-scroll">
-                <div id="wa-chart-bars" class="wa-chart-container"></div>
-            </div>
         </div>
 
         <!-- Wahlkreis-Details -->
@@ -140,6 +96,7 @@
                             <th class="wk-auszahlung">Ausgezählt</th>
                             <th class="wk-stimmen">Stimmführer (vorläufig)</th>
                             <th class="wk-vorsprung">Vorsprung</th>
+                            <th class="wk-prognose">Prognose</th>
                             <th class="wk-status">Status</th>
                         </tr>
                     </thead>

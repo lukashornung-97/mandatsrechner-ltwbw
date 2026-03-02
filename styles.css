@@ -1623,6 +1623,149 @@ h3 {
 }
 
 /* ============================================================
+   PROGNOSE / UNIFIED SITZVERTEILUNG
+   ============================================================ */
+
+.wa-prognose-badge {
+    display: inline-block;
+    font-size: 0.6em;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    background: #667eea;
+    color: white;
+    border-radius: 6px;
+    padding: 3px 8px;
+    vertical-align: middle;
+    margin-left: 8px;
+}
+
+.wa-sv-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    margin-bottom: 16px;
+    font-size: 0.9em;
+    color: #333;
+}
+
+.wa-sv-huerde {
+    color: #856404;
+    font-size: 0.88em;
+}
+
+.wa-sv-legend {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin-top: 14px;
+    font-size: 0.82em;
+    color: #555;
+}
+
+.wa-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.wa-legend-solid {
+    display: inline-block;
+    width: 20px;
+    height: 12px;
+    background: #667eea;
+    border-radius: 2px;
+}
+
+.wa-legend-hatched {
+    display: inline-block;
+    width: 20px;
+    height: 12px;
+    background: #667eea;
+    border-radius: 2px;
+    opacity: 0.6;
+    background-image: repeating-linear-gradient(
+        -45deg,
+        rgba(255,255,255,0.25) 0px,
+        rgba(255,255,255,0.25) 3px,
+        transparent 3px,
+        transparent 7px
+    );
+}
+
+/* Schraffierter Hochrechnungs-Balken (sitzt oben auf dem soliden Balken) */
+.wa-prognose-bar {
+    opacity: 0.6;
+    background-image: repeating-linear-gradient(
+        -45deg,
+        rgba(255,255,255,0.25) 0px,
+        rgba(255,255,255,0.25) 3px,
+        transparent 3px,
+        transparent 7px
+    ) !important;
+    border-radius: 4px 4px 0 0;
+}
+
+/* Solider Balken unter einem Prognose-Balken: obere Ecken gerade */
+.wa-prognose-bar + .wa-chart-bar {
+    border-radius: 0;
+}
+
+.wa-chart-actual-hint {
+    font-size: 0.78em;
+    font-weight: 400;
+    color: #888;
+}
+
+/* Direktmandate-Auflistung unter dem Balkendiagramm */
+.wa-sv-direktmandate {
+    margin-top: 14px;
+    font-size: 0.88em;
+    color: #333;
+    line-height: 1.7;
+}
+
+.wa-dm-sep {
+    color: #aaa;
+}
+
+/* Konfidenz-Badges in der Wahlkreis-Tabelle */
+.konfidenz-badge {
+    display: inline-block;
+    font-size: 0.72em;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 10px;
+    margin-left: 4px;
+    vertical-align: middle;
+    letter-spacing: 0.02em;
+}
+
+.konfidenz-hoch {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.konfidenz-mittel {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeeba;
+}
+
+.konfidenz-niedrig {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+/* Spaltenbreite Prognose in WK-Tabelle */
+.wk-prognose {
+    min-width: 130px;
+    white-space: nowrap;
+}
+
+/* ============================================================
    SITZVERTEILUNG BALKENDIAGRAMM
    ============================================================ */
 

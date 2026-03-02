@@ -81,6 +81,7 @@ const ZWEITSTIMMEN_MAPPING = {
 const MIN_PARLIAMENT_SIZE = 120;
 const THRESHOLD_PERCENT   = 5;
 
+
 // Wahlkreisnamen (70 Wahlkreise)
 const WK_NAMEN = {
     1:  'Stuttgart I',            2:  'Stuttgart II',           3:  'Stuttgart III',
@@ -169,7 +170,9 @@ function processData(rows) {
         });
     }
 
-    return { direktmandate, sitzverteilung, gemeldet, gesamt };
+    const prognose = berechnePrognose(direktmandate, landRow || null);
+
+    return { direktmandate, sitzverteilung, gemeldet, gesamt, prognose };
 }
 
 // ============================================================
@@ -206,9 +209,11 @@ function berechneDirectmandate(wahlkreisRows) {
         const gesamt          = parseInt(row['Anzahl Wahlbezirke']    || '0') || 0;
         const auszaehlungsgrad = gesamt > 0 ? gemeldet / gesamt : 0;
 
-        // Vorsprung = Abstand zum Zweitplatzierten
+        // Vorsprung = prozentualer Abstand zum Zweitplatzierten
         const sorted    = Object.values(stimmen).sort((a, b) => b - a);
-        const vorsprung = sorted.length >= 2 ? sorted[0] - sorted[1] : sorted[0];
+        const vorsprung = gesamtStimmen > 0 && sorted.length >= 2
+            ? (sorted[0] - sorted[1]) / gesamtStimmen * 100
+            : 0;
 
         ergebnisse[wkNr] = {
             wkNr,
@@ -222,7 +227,7 @@ function berechneDirectmandate(wahlkreisRows) {
             gesamt,
         };
 
-        if (winner) {
+        if (winner && auszaehlungsgrad >= 1.0) {
             perPartei[winner] = (perPartei[winner] || 0) + 1;
         }
     });
@@ -342,6 +347,107 @@ function berechneSitzverteilung(landRow, direktPerPartei) {
 }
 
 // ============================================================
+// PROGNOSE-MODELL (Swing-Modell / Normalverteilung)
+// ============================================================
+
+// Repräsentiert die typische Stimmen-Schwankung zwischen Wahlbezirken in %-Punkten.
+// Höherer Wert → mehr Unsicherheit bei frühem Auszählungsstand.
+const BASE_VOLATILITY = 8;
+
+// Normalverteilungs-CDF (Abramowitz & Stegun, Fehler < 7.5e-8)
+function normalCDF(x) {
+    if (x < -8) return 0;
+    if (x >  8) return 1;
+    const t = 1 / (1 + 0.2316419 * Math.abs(x));
+    const d = 0.3989422820 * Math.exp(-x * x / 2);
+    const p = d * t * (0.3193815301 + t * (-0.3565637813 + t * (1.7814779372 + t * (-1.8212559978 + t * 1.3302744929))));
+    return x >= 0 ? 1 - p : p;
+}
+
+// Berechnet fuer einen Wahlkreis die hochgerechneten Stimmen und die Gewinnwahrscheinlichkeit.
+function prognostiziereWahlkreis(wk) {
+    // Vollstaendig ausgezaehlt: 100% Sicherheit
+    if (wk.auszaehlungsgrad >= 1.0 || wk.gesamt === 0) {
+        return { winner: wk.winner, winProb: 1.0, projectedStimmen: { ...wk.stimmen }, isPrognose: false };
+    }
+
+    const f = wk.auszaehlungsgrad;
+
+    // Noch kein Ergebnis vorhanden
+    if (f === 0) {
+        return { winner: null, winProb: 0, projectedStimmen: {}, isPrognose: true };
+    }
+
+    // Lineare Hochrechnung: aktuelle Stimmen / Auszaehlungsgrad
+    const projectedStimmen = {};
+    let totalProjected = 0;
+    Object.entries(wk.stimmen).forEach(([partei, v]) => {
+        const proj = v / f;
+        projectedStimmen[partei] = proj;
+        totalProjected += proj;
+    });
+
+    if (totalProjected === 0) {
+        return { winner: null, winProb: 0, projectedStimmen: {}, isPrognose: true };
+    }
+
+    // Platz 1 und 2 bestimmen
+    const sorted  = Object.entries(projectedStimmen).sort((a, b) => b[1] - a[1]);
+    const first   = sorted[0];
+    const second  = sorted.length >= 2 ? sorted[1] : [null, 0];
+
+    // Vorsprung in %-Punkten
+    const marginPct = (first[1] - second[1]) / totalProjected * 100;
+
+    // Unsicherheit: nimmt mit steigendem Auszaehlungsgrad stark ab
+    const sigma   = BASE_VOLATILITY * Math.sqrt((1 - f) / f);
+    const winProb = sigma > 0 ? normalCDF(marginPct / sigma) : (marginPct > 0 ? 1.0 : 0.5);
+
+    return { winner: first[0], winProb, projectedStimmen, isPrognose: true };
+}
+
+// Berechnet die vollstaendige Prognose: pro WK Gewinner + Wahrscheinlichkeit,
+// hochgerechnete Zweitstimmen und eine hypothetische Sitzverteilung.
+function berechnePrognose(direktmandate, landRow) {
+    const { ergebnisse } = direktmandate;
+    const progPerWK     = {};
+    const progPerPartei = {}; // hypothetische Direktmandate
+
+    for (let wkNr = 1; wkNr <= 70; wkNr++) {
+        const wk = ergebnisse[wkNr];
+        if (!wk) continue;
+
+        const prog = prognostiziereWahlkreis(wk);
+        progPerWK[wkNr] = { ...wk, prognoseWinner: prog.winner, winProb: prog.winProb, isPrognose: prog.isPrognose };
+
+        if (prog.winner) {
+            progPerPartei[prog.winner] = (progPerPartei[prog.winner] || 0) + 1;
+        }
+    }
+
+    // Zweitstimmen hochrechnen und Sitzverteilung berechnen
+    let prognoseSitzverteilung = null;
+
+    if (landRow) {
+        const gemeldet = parseInt(landRow['gemeldete Wahlbezirke'] || '0') || 0;
+        const gesamt   = parseInt(landRow['Anzahl Wahlbezirke']    || '0') || 0;
+        const f        = gesamt > 0 ? gemeldet / gesamt : 0;
+
+        if (f > 0) {
+            // Synthetische LAND-Zeile mit hochgerechneten Zweitstimmen
+            const projLandRow = { ...landRow };
+            Object.keys(ZWEITSTIMMEN_MAPPING).forEach(col => {
+                const v = parseInt(landRow[col] || '0') || 0;
+                projLandRow[col] = String(Math.round(v / f));
+            });
+            prognoseSitzverteilung = berechneSitzverteilung(projLandRow, progPerPartei);
+        }
+    }
+
+    return { progPerWK, progPerPartei, prognoseSitzverteilung };
+}
+
+// ============================================================
 // DARSTELLUNG
 // ============================================================
 
@@ -353,23 +459,21 @@ function partyBadgeStyle(partei) {
 }
 
 function displayResults(data) {
-    const { direktmandate, sitzverteilung, gemeldet, gesamt } = data;
+    const { direktmandate, sitzverteilung, gemeldet, gesamt, prognose } = data;
 
     updateAuszaehlungsstand(gemeldet, gesamt);
-    displayWahlergebnis(direktmandate, sitzverteilung);
+    displaySitzverteilungUnified(sitzverteilung, prognose);
 
-    if (sitzverteilung) {
-        currentSitzverteilung = sitzverteilung;
-        displaySitzverteilung(sitzverteilung);
-        displaySitzverteilungChart(sitzverteilung);
-        setupKoalitionsrechner(sitzverteilung);
+    // Koalitionsrechner basiert auf dem besten verfügbaren Datensatz
+    const bestSV = (prognose && prognose.prognoseSitzverteilung) || sitzverteilung;
+    if (bestSV) {
+        currentSitzverteilung = bestSV;
+        setupKoalitionsrechner(bestSV);
     } else {
-        document.getElementById('wa-sitzverteilung-section').classList.add('hidden');
-        document.getElementById('wa-chart-section').classList.add('hidden');
         document.getElementById('wa-koalition-section').classList.add('hidden');
     }
 
-    displayWahlkreise(direktmandate);
+    displayWahlkreise(direktmandate, prognose);
 }
 
 function updateAuszaehlungsstand(gemeldet, gesamt) {
@@ -383,150 +487,157 @@ function updateAuszaehlungsstand(gemeldet, gesamt) {
     document.getElementById('wa-last-update').textContent  = new Date().toLocaleTimeString('de-DE');
 }
 
-function displayWahlergebnis(direktmandate, sitzverteilung) {
-    document.getElementById('wa-direktmandate-section').classList.remove('hidden');
-
-    const { perPartei } = direktmandate;
-    const totalDirekt   = Object.values(perPartei).reduce((s, n) => s + n, 0);
-    const overview      = document.getElementById('wa-direktmandate-overview');
-    overview.innerHTML  = '';
-
-    // Wenn Sitzverteilung verfügbar: Gesamtsitze pro Partei anzeigen
-    if (sitzverteilung && sitzverteilung.parties.length > 0) {
-        const totalSeats = sitzverteilung.totalSeats;
-        const majority   = Math.floor(totalSeats / 2) + 1;
-
-        document.getElementById('wa-direkt-total').textContent =
-            `${totalSeats} Sitze gesamt · Mehrheit: ${majority}`;
-
-        const sorted = [...sitzverteilung.parties].sort((a, b) => b.total - a.total);
-
-        sorted.forEach(party => {
-            const cfg       = PARTY_CONFIG[party.partei] || { color: '#888', textColor: 'white' };
-            const direkt    = party.direktmandate || 0;
-            const liste     = party.total - direkt;
-            const card      = document.createElement('div');
-            card.className             = 'mandate-card wa-ergebnis-card';
-            card.style.borderLeftColor = cfg.color;
-            card.innerHTML = `
-                <div class="party-name" style="color:${cfg.color}">${party.partei}</div>
-                <div class="mandate-count">${party.total}</div>
-                <div class="wa-ergebnis-breakdown">
-                    <span title="Direktmandate">⬛ ${direkt} Direkt</span>
-                    <span title="Listenmandate">📋 ${liste} Liste</span>
-                    ${party.ueberhang ? `<span class="wa-ueberhang-hint" title="Überhangmandate">+${party.ueberhang} Überhang</span>` : ''}
-                </div>
-                <div class="wa-ergebnis-pct">${party.prozent.toFixed(1).replace('.', ',')}% Zweitstimmen</div>
-            `;
-            overview.appendChild(card);
-        });
-
-        // Mehrheitslinie
-        const majorityEl = document.getElementById('wa-majority-line');
-        const majorityLb = document.getElementById('wa-majority-label');
-        majorityEl.classList.remove('hidden');
-        majorityLb.textContent =
-            `Absolute Mehrheit: ${majority} von ${totalSeats} Sitzen · Ausgezählt: ${totalDirekt} / 70 Direktmandate`;
-
-    } else {
-        // Fallback: nur Direktmandate anzeigen
-        document.getElementById('wa-direkt-total').textContent = `${totalDirekt} / 70 Direktmandate`;
-
-        const sorted = Object.entries(perPartei).sort((a, b) => b[1] - a[1]);
-        if (sorted.length === 0) {
-            overview.innerHTML = '<p class="wa-no-data">Noch keine Ergebnisse ausgezählt.</p>';
-            return;
-        }
-        sorted.forEach(([partei, anzahl]) => {
-            const cfg  = PARTY_CONFIG[partei] || { color: '#888', textColor: 'white' };
-            const card = document.createElement('div');
-            card.className             = 'mandate-card';
-            card.style.borderLeftColor = cfg.color;
-            card.innerHTML = `
-                <div class="party-name" style="color:${cfg.color}">${partei}</div>
-                <div class="mandate-count">${anzahl}</div>
-                <div class="mandate-change neutral">Direktmandate (Hochrechnung läuft…)</div>
-            `;
-            overview.appendChild(card);
-        });
-
-        document.getElementById('wa-majority-line').classList.add('hidden');
-    }
+// Konfidenz-CSS-Klasse basierend auf Wahrscheinlichkeit
+function konfidenzClass(prob) {
+    if (prob >= 0.90) return 'konfidenz-hoch';
+    if (prob >= 0.70) return 'konfidenz-mittel';
+    return 'konfidenz-niedrig';
 }
 
-function displaySitzverteilung(sv) {
-    document.getElementById('wa-sitzverteilung-section').classList.remove('hidden');
-    document.getElementById('wa-total-seats').textContent      = sv.totalSeats;
-    document.getElementById('wa-overhang-seats').textContent   = sv.totalOverhang;
-    document.getElementById('wa-compensation-seats').textContent = sv.totalCompensation;
+// Kombinierte Darstellung: aktueller Stand + Hochrechnung in einer Grafik
+function displaySitzverteilungUnified(sitzverteilung, prognose) {
+    const section   = document.getElementById('wa-sitzverteilung-section');
+    const infoBox   = document.getElementById('wa-sv-info');
+    const summary   = document.getElementById('wa-sv-summary');
+    const chart     = document.getElementById('wa-sv-chart');
+    const legend    = document.getElementById('wa-sv-legend');
+    const badge     = document.getElementById('wa-sv-badge');
 
-    const unterHuerde = sv.unterHuerde || [];
-    document.getElementById('wa-threshold-info').textContent = unterHuerde.length > 0
-        ? `Unter 5%: ${unterHuerde.join(', ')}`
-        : 'Alle Parteien über 5%';
+    const sv   = sitzverteilung;
+    const prog = prognose && prognose.prognoseSitzverteilung ? prognose.prognoseSitzverteilung : null;
 
-    const tbody = document.getElementById('wa-sitzverteilung-tbody');
-    tbody.innerHTML = '';
-
-    [...sv.parties].sort((a, b) => b.total - a.total).forEach(party => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>
-                <span class="wk-winner" style="${partyBadgeStyle(party.partei)}">${party.partei}</span>
-            </td>
-            <td style="text-align:right; font-family:monospace">${party.stimmen.toLocaleString('de-DE')}</td>
-            <td style="text-align:right">${party.prozent.toFixed(1).replace('.', ',')}%</td>
-            <td style="text-align:right">${party.direktmandate}</td>
-            <td style="text-align:right"><strong>${party.total}</strong></td>
-            <td style="text-align:right">${party.ueberhang || 0}</td>
-            <td style="text-align:right">${party.ausgleich || 0}</td>
-        `;
-        tbody.appendChild(row);
-    });
-}
-
-function displaySitzverteilungChart(sv) {
-    const section    = document.getElementById('wa-chart-section');
-    const container  = document.getElementById('wa-chart-bars');
-    container.innerHTML = '';
-
-    if (!sv || sv.parties.length === 0) {
-        section.classList.add('hidden');
-        return;
-    }
+    if (!sv && !prog) { section.classList.add('hidden'); return; }
     section.classList.remove('hidden');
 
-    const BAR_MAX_PX = 160; // Höhe des höchsten Balkens in Pixel
-    const sorted     = [...sv.parties].sort((a, b) => b.total - a.total);
-    const maxSeats   = sorted[0].total;
+    const isComplete = sv && (!prog || sv.totalSeats === prog.totalSeats);
+    const hasBoth    = sv && prog && !isComplete;
 
-    sorted.forEach(party => {
-        const cfg       = PARTY_CONFIG[party.partei] || { color: '#888888', textColor: 'white' };
-        const barHeight = maxSeats > 0 ? Math.max(3, Math.round(party.total / maxSeats * BAR_MAX_PX)) : 3;
+    badge.classList.toggle('hidden', !hasBoth);
+    legend.classList.toggle('hidden', !hasBoth);
+
+    // Info-Text
+    if (isComplete) {
+        infoBox.innerHTML = '<p>Berechnet nach Sainte-Laguë/Schepers auf Basis der Zweitstimmen.</p>';
+    } else if (hasBoth) {
+        infoBox.innerHTML = '<p>Solider Balken = aktueller Stand. Schraffierter Balken = Hochrechnung auf 100% (linear). Die Hochrechnung wird genauer, je mehr Wahlbezirke ausgezählt sind.</p>';
+    } else {
+        infoBox.innerHTML = '<p>Hochrechnung auf Basis der bisherigen Teilergebnisse (linear auf 100% skaliert). Noch vorläufig.</p>';
+    }
+
+    // Zusammenfassung
+    const best = prog || sv;
+    const label = hasBoth ? ' (hochgerechnet)' : '';
+    const unterHuerde = best.unterHuerde || [];
+    summary.innerHTML = `
+        <span><strong>${best.totalSeats}</strong> Sitze${label}</span>
+        <span>Überhang: <strong>${best.totalOverhang}</strong></span>
+        <span>Ausgleich: <strong>${best.totalCompensation}</strong></span>
+        <span>Mehrheit: <strong>${Math.floor(best.totalSeats / 2) + 1}</strong></span>
+        <span class="wa-sv-huerde">${unterHuerde.length > 0 ? `Unter 5%: ${unterHuerde.join(', ')}` : 'Alle über 5%'}</span>
+    `;
+
+    // Balkendiagramm
+    chart.innerHTML = '';
+
+    // Parteinamen vereinigen (alle aus sv und prog)
+    const partyMap = new Map();
+    if (sv) sv.parties.forEach(p  => partyMap.set(p.partei, { actual: p, proj: null }));
+    if (prog) prog.parties.forEach(p => {
+        const entry = partyMap.get(p.partei) || { actual: null, proj: null };
+        entry.proj = p;
+        partyMap.set(p.partei, entry);
+    });
+
+    const sorted = [...partyMap.entries()].sort((a, b) => {
+        const bTotal = (b[1].proj || b[1].actual).total;
+        const aTotal = (a[1].proj || a[1].actual).total;
+        return bTotal - aTotal;
+    });
+
+    const BAR_MAX_PX = 180;
+    const maxSeats   = sorted.length > 0
+        ? (sorted[0][1].proj || sorted[0][1].actual).total
+        : 1;
+
+    sorted.forEach(([partei, { actual, proj }]) => {
+        const cfg         = PARTY_CONFIG[partei] || { color: '#888888', textColor: 'white' };
+        const actualSeats = actual ? actual.total : 0;
+        const projSeats   = proj   ? proj.total   : actualSeats;
+        const pctText     = (proj || actual).prozent.toFixed(1).replace('.', ',');
+
+        const actualH = maxSeats > 0 ? Math.max(0, Math.round(actualSeats / maxSeats * BAR_MAX_PX)) : 0;
+        const projH   = maxSeats > 0 ? Math.max(0, Math.round(projSeats   / maxSeats * BAR_MAX_PX)) : 0;
+        const extraH  = Math.max(0, projH - actualH);
 
         const col = document.createElement('div');
         col.className = 'wa-chart-col';
-        col.innerHTML = `
-            <div class="wa-chart-bar-area" style="height:${BAR_MAX_PX + 24}px">
-                <span class="wa-chart-seats">${party.total}</span>
-                <div class="wa-chart-bar"
-                     style="height:${barHeight}px; background:${cfg.color}"></div>
-            </div>
-            <div class="wa-chart-name">${party.partei}</div>
-            <div class="wa-chart-pct">${party.prozent.toFixed(1).replace('.', ',')}%</div>
-        `;
-        container.appendChild(col);
+
+        if (hasBoth && extraH > 0) {
+            col.innerHTML = `
+                <div class="wa-chart-bar-area" style="height:${BAR_MAX_PX + 28}px">
+                    <span class="wa-chart-seats">${projSeats} <small class="wa-chart-actual-hint">(${actualSeats})</small></span>
+                    <div class="wa-chart-bar wa-prognose-bar" style="height:${extraH}px; background:${cfg.color}"></div>
+                    <div class="wa-chart-bar" style="height:${Math.max(3, actualH)}px; background:${cfg.color}"></div>
+                </div>
+                <div class="wa-chart-name">${partei}</div>
+                <div class="wa-chart-pct">${pctText}%</div>
+            `;
+        } else {
+            const h = Math.max(3, hasBoth ? actualH : projH || actualH);
+            const seats = hasBoth ? actualSeats : (projSeats || actualSeats);
+            col.innerHTML = `
+                <div class="wa-chart-bar-area" style="height:${BAR_MAX_PX + 28}px">
+                    <span class="wa-chart-seats">${seats}</span>
+                    <div class="wa-chart-bar" style="height:${h}px; background:${cfg.color}"></div>
+                </div>
+                <div class="wa-chart-name">${partei}</div>
+                <div class="wa-chart-pct">${pctText}%</div>
+            `;
+        }
+
+        chart.appendChild(col);
     });
+
+    // Direktmandate-Auflistung (prognostiziert)
+    const dmEl = document.getElementById('wa-sv-direktmandate');
+    if (prog) {
+        const progParties = prog.parties
+            .filter(p => p.direktmandate > 0)
+            .sort((a, b) => b.direktmandate - a.direktmandate);
+        const actualParties = sv ? sv.parties.filter(p => p.direktmandate > 0) : [];
+        const confirmedTotal = actualParties.reduce((s, p) => s + p.direktmandate, 0);
+
+        const parts = progParties.map(p => {
+            const cfg = PARTY_CONFIG[p.partei] || { color: '#888' };
+            return `<span style="color:${cfg.color}; font-weight:600">${p.partei}:&nbsp;${p.direktmandate}</span>`;
+        });
+
+        dmEl.innerHTML =
+            `<strong>Prognostizierte Direktmandate (${confirmedTotal} / 70 bestätigt):</strong> ` +
+            parts.join('<span class="wa-dm-sep">,&nbsp;&nbsp;</span>');
+    } else if (sv) {
+        const actualParties = sv.parties
+            .filter(p => p.direktmandate > 0)
+            .sort((a, b) => b.direktmandate - a.direktmandate);
+        const parts = actualParties.map(p => {
+            const cfg = PARTY_CONFIG[p.partei] || { color: '#888' };
+            return `<span style="color:${cfg.color}; font-weight:600">${p.partei}:&nbsp;${p.direktmandate}</span>`;
+        });
+        dmEl.innerHTML = `<strong>Direktmandate:</strong> ` + parts.join('<span class="wa-dm-sep">,&nbsp;&nbsp;</span>');
+    } else {
+        dmEl.innerHTML = '';
+    }
 }
 
-function displayWahlkreise(direktmandate) {
+function displayWahlkreise(direktmandate, prognose) {
     document.getElementById('wa-wahlkreis-section').classList.remove('hidden');
     const tbody = document.getElementById('wa-wahlkreis-tbody');
     tbody.innerHTML = '';
 
     for (let wkNr = 1; wkNr <= 70; wkNr++) {
-        const wk  = direktmandate.ergebnisse[wkNr];
-        const row = document.createElement('tr');
+        const wk   = direktmandate.ergebnisse[wkNr];
+        const prog = prognose && prognose.progPerWK ? prognose.progPerWK[wkNr] : null;
+        const row  = document.createElement('tr');
 
         if (!wk) {
             row.className = 'pending';
@@ -537,6 +648,7 @@ function displayWahlkreise(direktmandate) {
                 <td class="wk-auszahlung">–</td>
                 <td class="wk-stimmen">–</td>
                 <td class="wk-vorsprung">–</td>
+                <td class="wk-prognose">–</td>
                 <td class="wk-status"><span class="status-badge pending">Keine Daten</span></td>
             `;
         } else {
@@ -548,7 +660,6 @@ function displayWahlkreise(direktmandate) {
                 ? `<span class="wk-winner" style="${partyBadgeStyle(wk.winner)}">${wk.winner}</span>`
                 : '<span class="wk-winner" style="background:#ccc;color:#555">–</span>';
 
-            // Stimmführer mit Anteil (bei laufender Auszählung), sonst "ausgezählt"
             let stimmfuehrerText = '–';
             if (wk.winner && wk.gesamtStimmen > 0) {
                 const anteil = (wk.stimmen[wk.winner] / wk.gesamtStimmen * 100).toFixed(1);
@@ -558,7 +669,7 @@ function displayWahlkreise(direktmandate) {
             }
 
             const vorsprungText = wk.winner && wk.vorsprung > 0
-                ? `+${wk.vorsprung.toLocaleString('de-DE')}`
+                ? `+${wk.vorsprung.toFixed(1).replace('.', ',')}%`
                 : '–';
 
             const statusBadge = isComplete
@@ -567,6 +678,20 @@ function displayWahlkreise(direktmandate) {
                     ? `<span class="status-badge partial">${pct}% ausgezählt</span>`
                     : '<span class="status-badge pending">Ausstehend</span>';
 
+            // Prognose-Spalte
+            let prognoseBadge = '–';
+            if (isComplete) {
+                // Vollständig ausgezählt: Ergebnis ist sicher
+                prognoseBadge = winnerBadge;
+            } else if (prog && prog.prognoseWinner && prog.winProb > 0) {
+                const probPct  = (prog.winProb * 100).toFixed(0);
+                const cssClass = konfidenzClass(prog.winProb);
+                prognoseBadge  = `
+                    <span class="wk-winner" style="${partyBadgeStyle(prog.prognoseWinner)}">${prog.prognoseWinner}</span>
+                    <span class="konfidenz-badge ${cssClass}">${probPct}%</span>
+                `;
+            }
+
             row.innerHTML = `
                 <td class="wk-id">${wkNr}</td>
                 <td class="wk-name">${wk.wkName}</td>
@@ -574,6 +699,7 @@ function displayWahlkreise(direktmandate) {
                 <td class="wk-auszahlung">${pct}%</td>
                 <td class="wk-stimmen">${stimmfuehrerText}</td>
                 <td class="wk-vorsprung">${vorsprungText}</td>
+                <td class="wk-prognose">${prognoseBadge}</td>
                 <td class="wk-status">${statusBadge}</td>
             `;
         }
