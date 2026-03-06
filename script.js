@@ -5,12 +5,47 @@ const PARTY_CONFIG = {
     'SPD': { color: 'party-spd', name: 'SPD' },
     'AfD': { color: 'party-afd', name: 'AfD' },
     'FDP': { color: 'party-fdp', name: 'FDP' },
-    'Linke': { color: 'party-linke', name: 'Linke' }
+    'Linke': { color: 'party-linke', name: 'Linke' },
+    'FW': { color: 'party-fw', name: 'FW' },
+    'BSW': { color: 'party-bsw', name: 'BSW' }
+};
+
+// Empirische Split-Ratios aus BTW 2025 in BW (Erststimme/Zweitstimme)
+const BTW_SPLIT_RATIOS = {
+    "CDU":    { ratio: 1.140, erstPct: 36.0, zweitPct: 31.6 },
+    "Grüne":  { ratio: 1.028, erstPct: 14.0, zweitPct: 13.6 },
+    "SPD":    { ratio: 1.118, erstPct: 15.8, zweitPct: 14.2 },
+    "AfD":    { ratio: 0.983, erstPct: 19.4, zweitPct: 19.8 },
+    "FDP":    { ratio: 0.762, erstPct:  4.3, zweitPct:  5.6 },
+    "Linke":  { ratio: 0.841, erstPct:  5.7, zweitPct:  6.8 },
+    "FW":     { ratio: 1.904, erstPct:  2.6, zweitPct:  1.4 },
+    "BSW":    { ratio: 0.000, erstPct:  0.0, zweitPct:  4.1 }
+};
+
+// LTW-spezifische Korrekturfaktoren auf die BTW-Ratios
+const LTW_ADJUSTMENT = {
+    "CDU":    1.05,  // traditionell starke WK-Kandidaten in ländl. Gebieten
+    "Grüne":  1.00,  // kein LTW-Adjustment (BTW-Ratio reicht)
+    "SPD":    1.00,  // kein LTW-Adjustment (BTW-Ratio reicht)
+    "AfD":    1.05,  // leichter Erststimmen-Nudge (Chance auf 2 Direktmandate)
+    "FDP":    0.85,  // noch schwächer bei Erststimme auf Landesebene
+    "Linke":  0.80,  // weniger bekannte Direktkandidaten
+    "FW":     1.10,  // starke lokale Verankerung bei LTW
+    "BSW":    0.50   // nur in wenigen WKs mit Direktkandidaten
 };
 
 const MIN_PARLIAMENT_SIZE = 120;
 const DIRECT_MANDATES_TOTAL = 70;
 const THRESHOLD_PERCENT = 5;
+
+// Erststimmen aus Zweitstimmen ableiten (BTW-Split-Ratios × LTW-Adjustment)
+function getErststimmenPrognose(party, zweitstimmeWK, useSplitting = true) {
+    if (!useSplitting) return zweitstimmeWK;
+    const btwRatio = BTW_SPLIT_RATIOS[party]?.ratio ?? 1.0;
+    const ltwAdj = LTW_ADJUSTMENT[party] ?? 1.0;
+    const effectiveRatio = btwRatio * ltwAdj;
+    return zweitstimmeWK * effectiveRatio;
+}
 
 // ==========================================
 // WAHLERGEBNISSE 2021 - ALLE 70 WAHLKREISE
@@ -206,13 +241,14 @@ let lastSeatResult = null; // { partyNameToSeats: {}, totalSeats: 0 } für Anzei
 
 // Initialize default parties with current polling values
 function initParties() {
+    // Politbarometer Extra 4.–5. März 2026 (Forschungsgruppe Wahlen)
     parties = [
-        { name: 'CDU', percentage: 27, directMandates: 0 },
-        { name: 'Grüne', percentage: 25, directMandates: 0 },
-        { name: 'AfD', percentage: 19, directMandates: 0 },
-        { name: 'SPD', percentage: 9, directMandates: 0 },
-        { name: 'Linke', percentage: 6, directMandates: 0 },
-        { name: 'FDP', percentage: 6, directMandates: 0 }
+        { name: 'CDU', percentage: 28, directMandates: 0 },
+        { name: 'Grüne', percentage: 28, directMandates: 0 },
+        { name: 'AfD', percentage: 18, directMandates: 0 },
+        { name: 'SPD', percentage: 8, directMandates: 0 },
+        { name: 'FDP', percentage: 5.5, directMandates: 0 },
+        { name: 'Linke', percentage: 5.5, directMandates: 0 }
     ];
     renderPartyTable();
 }
@@ -693,6 +729,8 @@ function getPartyColor(partyName) {
         'party-afd': '#009ee0',
         'party-fdp': '#ffed00',
         'party-linke': '#be3075',
+        'party-fw': '#ff6600',
+        'party-bsw': '#6b2d5c',
         'party-other': '#888888'
     };
     return colorMap[config.color] || '#888888';
@@ -953,8 +991,9 @@ let prognoseResults = null;
 // Berechnung der Direktmandate basierend auf Wahlkreis-Ergebnissen
 function autoCalculateDirektmandate() {
     const method = document.getElementById('swing-method')?.value || 'uniform';
+    const useSplitting = document.getElementById('use-splitting')?.checked ?? true;
     
-    // Hole aktuelle Umfragewerte
+    // Hole aktuelle Umfragewerte (Zweitstimmen)
     const umfrageWerte = {};
     parties.forEach(party => {
         umfrageWerte[party.name] = party.percentage || 0;
@@ -966,25 +1005,41 @@ function autoCalculateDirektmandate() {
         mandateCount[party.name] = 0;
     });
     
-    // Berechne für jeden Wahlkreis den Gewinner
+    // Berechne für jeden Wahlkreis den Gewinner (basierend auf Erststimmen bei Splitting)
     WAHLKREISE_2021.forEach(wahlkreis => {
+        const erststimmenRaw = {};
+        const zweitstimmenRaw = {};
+        
+        // 1. Zweitstimmen-Prognose pro Partei
+        Object.keys(umfrageWerte).forEach(party => {
+            const umfrage = umfrageWerte[party] || 0;
+            const ergebnis2021 = wahlkreis.erststimmen[party] ?? 0;
+            const landesergebnis = LANDESERGEBNIS_2021[party] ?? 0;
+            
+            let zweitstimmeWK;
+            if (method === 'uniform') {
+                zweitstimmeWK = calculateUniformSwing(ergebnis2021, umfrage, landesergebnis);
+            } else {
+                zweitstimmeWK = calculateHybridProfile(wahlkreis.id, party, umfrage);
+            }
+            zweitstimmenRaw[party] = zweitstimmeWK;
+            
+            // 2. Erststimmen aus Zweitstimmen ableiten
+            erststimmenRaw[party] = getErststimmenPrognose(party, zweitstimmeWK, useSplitting);
+        });
+        
+        // 3. Erststimmen normalisieren (Summe = 100%)
+        const sumErst = Object.values(erststimmenRaw).reduce((a, b) => a + b, 0);
+        const erststimmenNorm = sumErst > 0
+            ? Object.fromEntries(Object.entries(erststimmenRaw).map(([p, v]) => [p, (v / sumErst) * 100]))
+            : erststimmenRaw;
+        
+        // 4. Gewinner = Partei mit höchster Erststimme
         let gewinner = null;
         let maxWert = 0;
-        
-        Object.keys(wahlkreis.erststimmen).forEach(party => {
-            const ergebnis2021 = wahlkreis.erststimmen[party];
-            const umfrage = umfrageWerte[party] || 0;
-            const landesergebnis = LANDESERGEBNIS_2021[party] || 0;
-            
-            let prognose;
-            if (method === 'uniform') {
-                prognose = Math.max(0, ergebnis2021 + (umfrage - landesergebnis));
-            } else {
-                prognose = calculateHybridProfile(wahlkreis.id, party, umfrage);
-            }
-            
-            if (prognose > maxWert) {
-                maxWert = prognose;
+        Object.entries(erststimmenNorm).forEach(([party, wert]) => {
+            if (wert > maxWert) {
+                maxWert = wert;
                 gewinner = party;
             }
         });
@@ -1017,11 +1072,17 @@ function calculateUniformSwing(wahlkreisErgebnis, umfrageWert, landesergebnis202
 
 // Wahlkreis-Profil (Hybrid): Nutzt historische relative Faktoren aus 2016 und 2021
 // Für AfD: 50% Faktor-Methode + 50% Uniform Swing (wegen höherer Volatilität)
+// Gibt Zweitstimmen-Prognose für den Wahlkreis zurück
 function calculateHybridProfile(wahlkreisId, party, umfrageWert) {
     const ergebnis2021 = WAHLKREISE_2021.find(wk => wk.id === wahlkreisId)?.erststimmen[party] || 0;
     const ergebnis2016 = WAHLKREISE_2016[wahlkreisId]?.[party] || 0;
     const land2021 = LANDESERGEBNIS_2021[party] || 0;
     const land2016 = LANDESERGEBNIS_2016[party] || 0;
+    
+    // Parteien ohne historische Daten (z.B. FW, BSW): Umfragewert als Zweitstimmen-Prognose
+    if (land2021 === 0 && land2016 === 0) {
+        return Math.max(0, umfrageWert);
+    }
     
     // Berechne durchschnittlichen relativen Faktor aus 2016 und 2021
     const faktor2021 = land2021 > 0 ? ergebnis2021 / land2021 : 1;
@@ -1044,8 +1105,9 @@ function calculateHybridProfile(wahlkreisId, party, umfrageWert) {
 // Berechne Prognose für alle Wahlkreise
 function calculateWahlkreisPrognose() {
     const method = document.getElementById('swing-method').value;
+    const useSplitting = document.getElementById('use-splitting')?.checked ?? true;
     
-    // Hole aktuelle Umfragewerte aus der Eingabe
+    // Hole aktuelle Umfragewerte (Zweitstimmen) aus der Eingabe
     const umfrageWerte = {};
     parties.forEach(party => {
         umfrageWerte[party.name] = party.percentage || 0;
@@ -1055,35 +1117,49 @@ function calculateWahlkreisPrognose() {
     const mandateCount = {};
     let changedWahlkreise = 0;
     
-    // Initialisiere Mandatezähler
+    // Initialisiere Mandatezähler für alle Parteien
+    parties.forEach(party => {
+        mandateCount[party.name] = 0;
+    });
     Object.keys(PARTY_CONFIG).forEach(party => {
-        mandateCount[party] = 0;
+        if (!mandateCount[party]) mandateCount[party] = 0;
     });
     
     // Berechne für jeden Wahlkreis
     WAHLKREISE_2021.forEach(wahlkreis => {
-        const prognoseErgebnisse = {};
+        const zweitstimmenPrognose = {};
+        const erststimmenPrognose = {};
         
-        // Berechne Prognose für jede Partei
-        Object.keys(wahlkreis.erststimmen).forEach(party => {
-            const ergebnis2021 = wahlkreis.erststimmen[party];
+        // 1. Zweitstimmen-Prognose pro Partei
+        Object.keys(umfrageWerte).forEach(party => {
             const umfrage = umfrageWerte[party] || 0;
-            const landesergebnis = LANDESERGEBNIS_2021[party] || 0;
+            const ergebnis2021 = wahlkreis.erststimmen[party] ?? 0;
+            const landesergebnis = LANDESERGEBNIS_2021[party] ?? 0;
             
+            let zweitstimmeWK;
             if (method === 'uniform') {
-                prognoseErgebnisse[party] = calculateUniformSwing(ergebnis2021, umfrage, landesergebnis);
+                zweitstimmeWK = calculateUniformSwing(ergebnis2021, umfrage, landesergebnis);
             } else {
-                // Wahlkreis-Profil (Hybrid) Methode
-                prognoseErgebnisse[party] = calculateHybridProfile(wahlkreis.id, party, umfrage);
+                zweitstimmeWK = calculateHybridProfile(wahlkreis.id, party, umfrage);
             }
+            zweitstimmenPrognose[party] = zweitstimmeWK;
+            
+            // 2. Erststimmen aus Zweitstimmen ableiten
+            erststimmenPrognose[party] = getErststimmenPrognose(party, zweitstimmeWK, useSplitting);
         });
         
-        // Finde Gewinner
+        // 3. Erststimmen normalisieren (Summe = 100%)
+        const sumErst = Object.values(erststimmenPrognose).reduce((a, b) => a + b, 0);
+        const erststimmenNorm = sumErst > 0
+            ? Object.fromEntries(Object.entries(erststimmenPrognose).map(([p, v]) => [p, (v / sumErst) * 100]))
+            : erststimmenPrognose;
+        
+        // 4. Gewinner = Partei mit höchster Erststimme
         let gewinner = null;
         let maxWert = 0;
         let zweitbester = 0;
         
-        Object.entries(prognoseErgebnisse).forEach(([party, wert]) => {
+        Object.entries(erststimmenNorm).forEach(([party, wert]) => {
             if (wert > maxWert) {
                 zweitbester = maxWert;
                 maxWert = wert;
@@ -1110,7 +1186,9 @@ function calculateWahlkreisPrognose() {
             gewinnerPrognose: gewinner,
             vorsprung: vorsprung,
             hasChanged: hasChanged,
-            prognoseErgebnisse: prognoseErgebnisse
+            erststimmenPrognose: erststimmenNorm,
+            zweitstimmenPrognose: zweitstimmenPrognose,
+            prognoseErgebnisse: erststimmenNorm  // Abwärtskompatibel: Gewinner basiert auf Erststimme
         });
     });
     
@@ -1219,12 +1297,52 @@ function toggleWahlkreisDetails() {
     }
 }
 
+// Aktuell geöffneter Wahlkreis für Modal-Toggle
+let currentModalWahlkreisId = null;
+
+// Rendert 2026-Balken im Modal (Erst- oder Zweitstimme)
+function renderModal2026Bars(prognoseData, mode) {
+    const ergebnis2026El = document.getElementById('modal-ergebnis-2026');
+    const gewinner2026El = document.getElementById('modal-gewinner-2026');
+    if (!prognoseData || !ergebnis2026El) return;
+    
+    const data = mode === 'zweit'
+        ? (prognoseData.zweitstimmenPrognose || prognoseData.prognoseErgebnisse)
+        : (prognoseData.erststimmenPrognose || prognoseData.prognoseErgebnisse);
+    if (!data) return;
+    
+    const parteien2026 = Object.entries(data)
+        .filter(([, v]) => v > 0)
+        .sort((a, b) => b[1] - a[1]);
+    
+    const maxVal = Math.max(...Object.values(data), 1);
+    
+    ergebnis2026El.innerHTML = parteien2026.map(([party, value]) => {
+        const partyConfig = PARTY_CONFIG[party] || { color: 'party-other' };
+        const barWidth = (value / maxVal) * 100;
+        return `
+            <div class="ergebnis-row">
+                <span class="ergebnis-party">${party}</span>
+                <div class="ergebnis-bar-container">
+                    <div class="ergebnis-bar ${partyConfig.color}" style="width: ${Math.min(barWidth, 100)}%"></div>
+                </div>
+                <span class="ergebnis-value">${value.toFixed(1)}%</span>
+            </div>
+        `;
+    }).join('');
+    
+    const partyConfig2026 = PARTY_CONFIG[prognoseData.gewinnerPrognose] || { color: 'party-other' };
+    gewinner2026El.className = partyConfig2026.color;
+    gewinner2026El.textContent = prognoseData.gewinnerPrognose;
+}
+
 // Öffne Wahlkreis-Detail Modal
 function openWahlkreisModal(wahlkreisId) {
     const wahlkreis = WAHLKREISE_2021.find(wk => wk.id === wahlkreisId);
     if (!wahlkreis) return;
     
     const prognoseData = prognoseResults?.wahlkreise.find(wk => wk.id === wahlkreisId);
+    currentModalWahlkreisId = wahlkreisId;
     
     const modal = document.getElementById('wahlkreis-modal');
     const nameEl = document.getElementById('modal-wahlkreis-name');
@@ -1259,30 +1377,21 @@ function openWahlkreisModal(wahlkreisId) {
     gewinner2021El.className = partyConfig2021.color;
     gewinner2021El.textContent = wahlkreis.gewinner2021;
     
-    // Erstelle 2026 Prognose Balken
-    if (prognoseData && prognoseData.prognoseErgebnisse) {
-        const parteien2026 = Object.entries(prognoseData.prognoseErgebnisse)
-            .sort((a, b) => b[1] - a[1]);
+    // Erstelle 2026 Prognose Balken (Standard: Erststimme)
+    if (prognoseData && (prognoseData.erststimmenPrognose || prognoseData.zweitstimmenPrognose)) {
+        const mode = document.querySelector('.modal-stimmen-toggle .toggle-btn.active')?.dataset?.mode || 'erst';
+        renderModal2026Bars(prognoseData, mode);
         
-        ergebnis2026El.innerHTML = parteien2026.map(([party, value]) => {
-            const partyConfig = PARTY_CONFIG[party] || { color: 'party-other' };
-            return `
-                <div class="ergebnis-row">
-                    <span class="ergebnis-party">${party}</span>
-                    <div class="ergebnis-bar-container">
-                        <div class="ergebnis-bar ${partyConfig.color}" style="width: ${Math.min(value, 100)}%"></div>
-                    </div>
-                    <span class="ergebnis-value">${value.toFixed(1)}%</span>
-                </div>
-            `;
-        }).join('');
-        
-        // Setze Gewinner 2026
-        const partyConfig2026 = PARTY_CONFIG[prognoseData.gewinnerPrognose] || { color: 'party-other' };
-        gewinner2026El.className = partyConfig2026.color;
-        gewinner2026El.textContent = prognoseData.gewinnerPrognose;
+        // Toggle-Buttons
+        document.querySelectorAll('.modal-stimmen-toggle .toggle-btn').forEach(btn => {
+            btn.onclick = () => {
+                document.querySelectorAll('.modal-stimmen-toggle .toggle-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                renderModal2026Bars(prognoseData, btn.dataset.mode);
+            };
+        });
     } else {
-        ergebnis2026El.innerHTML = '<p style="text-align: center; color: #666;">Bitte zuerst "Berechnen" klicken</p>';
+        ergebnis2026El.innerHTML = '<p style="text-align: center; color: #666;">Bitte zuerst "Wahlkreis-Details anzeigen" klicken</p>';
         gewinner2026El.className = '';
         gewinner2026El.textContent = '–';
     }

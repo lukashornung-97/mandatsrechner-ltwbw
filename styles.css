@@ -898,6 +898,28 @@ h3 {
     padding: 20px;
 }
 
+.modal-stimmen-toggle {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+.modal-stimmen-toggle .toggle-btn {
+    padding: 6px 12px;
+    border: 2px solid #667eea;
+    background: #fff;
+    color: #667eea;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9em;
+}
+.modal-stimmen-toggle .toggle-btn:hover {
+    background: #f0f4ff;
+}
+.modal-stimmen-toggle .toggle-btn.active {
+    background: #667eea;
+    color: #fff;
+}
+
 .comparison-column h4 {
     margin: 0 0 15px 0;
     color: #667eea;

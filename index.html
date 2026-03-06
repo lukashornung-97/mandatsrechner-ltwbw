@@ -23,6 +23,10 @@
                     <option value="uniform">Uniform Swing (gleichmäßige Verschiebung)</option>
                     <option value="hybrid">Wahlkreis-Profil (historische Faktoren 2016/2021)</option>
                 </select>
+                <label class="splitting-toggle">
+                    <input type="checkbox" id="use-splitting" checked>
+                    Mit Stimmensplitting (BTW-basiert)
+                </label>
                 <button id="calculate-direktmandate-btn" class="btn-primary" onclick="autoCalculateDirektmandate()">Berechnen</button>
             </div>
             
@@ -234,6 +238,10 @@
                     </div>
                     <div class="comparison-column">
                         <h4>Prognose 2026</h4>
+                        <div class="modal-stimmen-toggle">
+                            <button type="button" class="toggle-btn active" data-mode="erst" id="modal-toggle-erst">Erststimme</button>
+                            <button type="button" class="toggle-btn" data-mode="zweit" id="modal-toggle-zweit">Zweitstimme</button>
+                        </div>
                         <div id="modal-ergebnis-2026" class="ergebnis-bars">
                             <!-- 2026 Prognose -->
                         </div>
