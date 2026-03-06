@@ -202,6 +202,7 @@ const LANDESERGEBNIS_2016 = {
 
 let parties = [];
 let hasCalculated = false; // Wurden Direktmandate schon berechnet?
+let lastSeatResult = null; // { partyNameToSeats: {}, totalSeats: 0 } für Anzeige in Eingabetabelle
 
 // Initialize default parties with current polling values
 function initParties() {
@@ -249,6 +250,7 @@ function renderPartyTable() {
             `;
         }
         
+        const gesamtSitze = lastSeatResult?.partyNameToSeats[party.name] ?? '–';
         row.innerHTML = `
             <td class="party-name">${party.name}</td>
             <td>
@@ -263,6 +265,7 @@ function renderPartyTable() {
                        oninput="validatePercentageInput(this)">
             </td>
             ${direktmandateCell}
+            <td class="party-seats-cell" id="party-seats-${index}">${gesamtSitze}</td>
             <td>
                 <button class="btn-secondary" onclick="removeParty(${index})" style="padding: 6px 12px; font-size: 0.9em;">Entfernen</button>
             </td>
@@ -274,6 +277,26 @@ function renderPartyTable() {
     document.querySelectorAll('#party-table input').forEach(input => {
         input.addEventListener('input', handleInputChange);
     });
+
+    // Gesamtsitze-Footer aktualisieren
+    const totalEl = document.getElementById('party-table-total-seats');
+    if (totalEl) {
+        totalEl.textContent = lastSeatResult?.totalSeats ?? '–';
+    }
+}
+
+// Gesamtsitze-Spalte und Footer in Eingabetabelle aktualisieren
+function updatePartyTableSeats() {
+    parties.forEach((party, index) => {
+        const cell = document.getElementById(`party-seats-${index}`);
+        if (cell) {
+            cell.textContent = lastSeatResult?.partyNameToSeats[party.name] ?? '–';
+        }
+    });
+    const totalEl = document.getElementById('party-table-total-seats');
+    if (totalEl) {
+        totalEl.textContent = lastSeatResult?.totalSeats ?? '–';
+    }
 }
 
 // Handle input changes
@@ -474,6 +497,8 @@ function sainteLagueDistribution(votes, totalSeats) {
 // Calculate seat distribution
 function calculateSeats() {
     if (!validateInput()) {
+        lastSeatResult = null;
+        updatePartyTableSeats();
         return;
     }
     
@@ -481,6 +506,8 @@ function calculateSeats() {
     const eligibleParties = parties.filter(p => p.percentage >= THRESHOLD_PERCENT);
     
     if (eligibleParties.length === 0) {
+        lastSeatResult = null;
+        updatePartyTableSeats();
         return;
     }
     
@@ -618,7 +645,17 @@ function displayResults(eligibleParties, listSeats, overhangMandates, compensati
     document.getElementById('total-seats').textContent = totalFinalSeats;
     document.getElementById('overhang-seats').textContent = totalOverhang;
     document.getElementById('compensation-seats').textContent = totalCompensation;
-    
+
+    // Gesamtsitze in Eingabetabelle anzeigen
+    lastSeatResult = {
+        partyNameToSeats: {},
+        totalSeats: totalFinalSeats
+    };
+    eligibleParties.forEach((party, index) => {
+        lastSeatResult.partyNameToSeats[party.name] = finalSeats[index];
+    });
+    updatePartyTableSeats();
+
     // Render results table
     const tbody = document.getElementById('results-tbody');
     tbody.innerHTML = '';

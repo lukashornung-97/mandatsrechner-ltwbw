@@ -160,6 +160,18 @@ h3 {
     background: #f8f9ff;
 }
 
+.input-table tr.party-table-footer td {
+    background: #f0f4ff;
+    font-weight: 600;
+    border-top: 2px solid #667eea;
+    padding: 12px;
+}
+
+.input-table .party-seats-cell {
+    font-weight: 600;
+    color: #667eea;
+}
+
 .input-table input {
     width: 100%;
     padding: 8px;

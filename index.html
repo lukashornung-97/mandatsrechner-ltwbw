@@ -40,12 +40,21 @@
                         <th>Partei</th>
                         <th>Umfragewert (%)</th>
                         <th>Direktmandate (Projektion)</th>
+                        <th>Gesamtsitze</th>
                         <th>Aktion</th>
                     </tr>
                 </thead>
                 <tbody id="party-tbody">
                     <!-- Parties will be added here -->
                 </tbody>
+                <tfoot>
+                    <tr class="party-table-footer">
+                        <td colspan="2"></td>
+                        <td><strong>Gesamtsitze:</strong></td>
+                        <td id="party-table-total-seats">–</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
             </table>
             
             <button id="add-party-btn" class="btn-secondary">+ Partei hinzufügen</button>
