@@ -379,11 +379,8 @@ function validatePercentageInput(input) {
     parties[index].percentage = Math.max(0, value);
     updateValidationMessage();
     
-    // Projektion zurücksetzen wenn Umfragewerte geändert werden
-    if (hasCalculated) {
-        hasCalculated = false;
-        renderPartyTable();
-    }
+    // Automatisch neu berechnen bei manueller Änderung der Umfragewerte
+    autoCalculateDirektmandate();
 }
 
 // Validate direct mandate input in real-time
