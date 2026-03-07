@@ -803,11 +803,20 @@ async function loadFromUrl() {
     setStatus(`Lade Daten von ${url} …`, 'info');
 
     try {
+        // #region agent log
+        fetch('http://127.0.0.1:7911/ingest/7f565262-2ed0-4df2-bdd0-be60c1030c42',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'4fbedb'},body:JSON.stringify({sessionId:'4fbedb',location:'wahlabend.js:806',message:'loadFromUrl called',data:{url},timestamp:Date.now(),hypothesisId:'H1-H2-H3'})}).catch(()=>{});
+        // #endregion
         const response = await fetch(url);
+        // #region agent log
+        fetch('http://127.0.0.1:7911/ingest/7f565262-2ed0-4df2-bdd0-be60c1030c42',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'4fbedb'},body:JSON.stringify({sessionId:'4fbedb',location:'wahlabend.js:808',message:'fetch succeeded',data:{status:response.status,statusText:response.statusText,headers:Object.fromEntries([...response.headers]),type:response.type,url:response.url},timestamp:Date.now(),hypothesisId:'H2'})}).catch(()=>{});
+        // #endregion
         if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         const text = await response.text();
         processAndDisplay(text, `URL: ${url}`);
     } catch (err) {
+        // #region agent log
+        fetch('http://127.0.0.1:7911/ingest/7f565262-2ed0-4df2-bdd0-be60c1030c42',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'4fbedb'},body:JSON.stringify({sessionId:'4fbedb',location:'wahlabend.js:814',message:'fetch error caught',data:{name:err.name,message:err.message,stack:err.stack},timestamp:Date.now(),hypothesisId:'H1-H2-H3'})}).catch(()=>{});
+        // #endregion
         setStatus(`Fehler beim Abrufen: ${err.message}. (Ggf. CORS-Einschränkung des Servers.)`, 'error');
     }
 }
