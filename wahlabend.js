@@ -110,6 +110,9 @@ const WK_NAMEN = {
     70: 'Sigmaringen',
 };
 
+// Standard-URL der Statistik BW (LTW 2026)
+const DEFAULT_CSV_URL = 'https://wahlen.statistik-bw.de/ltw26/ltw26-ergebnisse.csv';
+
 // App-Zustand
 let currentSitzverteilung = null;
 let autoRefreshTimer      = null;
@@ -879,3 +882,15 @@ function scheduleNext(seconds) {
         }
     }, seconds * 1000);
 }
+
+// ============================================================
+// INIT – Automatisches Laden beim Seitenaufruf
+// ============================================================
+
+document.addEventListener('DOMContentLoaded', () => {
+    const urlInput = document.getElementById('csv-url');
+    if (!urlInput.value.trim()) {
+        urlInput.value = DEFAULT_CSV_URL;
+    }
+    loadFromUrl();
+});
