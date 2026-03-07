@@ -910,5 +910,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!urlInput.value.trim()) {
         urlInput.value = DEFAULT_CSV_URL;
     }
-    loadFromUrl();
+    document.getElementById('refresh-interval').value = 30;
+    document.getElementById('auto-refresh').checked = true;
+    loadFromUrl().then(() => startAutoRefresh());
 });
