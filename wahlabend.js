@@ -793,10 +793,8 @@ async function loadFromFile() {
     }
 }
 
-const CORS_PROXIES = [
-    url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-    url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-];
+// Eigener Cloudflare Worker als CORS-Proxy (cors-proxy/ im Repo)
+const CORS_PROXY_URL = 'https://ltw-cors-proxy.lukas-hornung.workers.dev';
 
 async function fetchWithCorsProxy(url) {
     // Direkter Versuch zuerst
@@ -805,16 +803,14 @@ async function fetchWithCorsProxy(url) {
         if (response.ok) return await response.text();
     } catch (_) { /* CORS oder Netzwerkfehler – Proxy versuchen */ }
 
-    // Proxy-Fallback
-    for (const proxyFn of CORS_PROXIES) {
-        try {
-            const proxyUrl = proxyFn(url);
-            const response = await fetch(proxyUrl);
-            if (response.ok) return await response.text();
-        } catch (_) { /* nächsten Proxy versuchen */ }
+    // Eigener CORS-Proxy
+    const proxyUrl = `${CORS_PROXY_URL}/?url=${encodeURIComponent(url)}`;
+    const response = await fetch(proxyUrl);
+    if (!response.ok) {
+        const body = await response.text().catch(() => '');
+        throw new Error(`Proxy-Fehler (HTTP ${response.status}): ${body || response.statusText}`);
     }
-
-    throw new Error('Abruf fehlgeschlagen – weder direkt noch über CORS-Proxy erreichbar.');
+    return await response.text();
 }
 
 async function loadFromUrl() {
