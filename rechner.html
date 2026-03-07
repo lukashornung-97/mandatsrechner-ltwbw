@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Baden-Württemberg Landtag Sitzverteilungs-Rechner</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Baden-Württemberg Landtag Sitzverteilungs-Rechner</h1>
+            <p class="subtitle">Berechnung nach Sainte-Laguë/Schepers-Verfahren</p>
+            <p class="beta-notice">Beta-Version, ohne Gewähr der Korrektheit. Feedback an: <a href="mailto:lukhornung@gmail.com">lukhornung@gmail.com</a></p>
+        </header>
+
+        <div class="input-section">
+            <h2>Eingabe</h2>
+            
+            <div id="swing-method-container" class="swing-method-container">
+                <label for="swing-method">Berechnungsmethode:</label>
+                <select id="swing-method">
+                    <option value="uniform">Uniform Swing (gleichmäßige Verschiebung)</option>
+                    <option value="hybrid">Wahlkreis-Profil (historische Faktoren 2016/2021)</option>
+                </select>
+                <label class="splitting-toggle">
+                    <input type="checkbox" id="use-splitting" checked>
+                    Mit Stimmensplitting (BTW-basiert)
+                </label>
+                <button id="calculate-direktmandate-btn" class="btn-primary" onclick="autoCalculateDirektmandate()">Berechnen</button>
+            </div>
+            
+            <div class="info-box">
+                <p><strong>Landtag:</strong> Mindestgröße 120 Sitze | <strong>Direktmandate:</strong> 70 (automatisch aus Wahlergebnis 2021 hochgerechnet)</p>
+            </div>
+            
+            <div class="warning-box">
+                <p><strong>Achtung:</strong> Die Berechnung der Direktmandate ist mit mathematischen Unsicherheiten verbunden.</p>
+            </div>
+
+            <table id="party-table" class="input-table">
+                <thead>
+                    <tr>
+                        <th>Partei</th>
+                        <th>Umfragewert (%)</th>
+                        <th>Direktmandate (Projektion)</th>
+                        <th>Gesamtsitze</th>
+                        <th>Aktion</th>
+                    </tr>
+                </thead>
+                <tbody id="party-tbody">
+                    <!-- Parties will be added here -->
+                </tbody>
+                <tfoot>
+                    <tr class="party-table-footer">
+                        <td colspan="2"></td>
+                        <td><strong>Gesamtsitze:</strong></td>
+                        <td id="party-table-total-seats">–</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+            
+            <button id="add-party-btn" class="btn-secondary">+ Partei hinzufügen</button>
+            
+            <div id="validation-message" class="validation-message"></div>
+        </div>
+
+        <div id="results-section" class="results-section hidden">
+            <h2>Ergebnis</h2>
+            
+            <div class="summary-box">
+                <div class="summary-item">
+                    <span class="summary-label">Gesamtsitze:</span>
+                    <span id="total-seats" class="summary-value">0</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Überhangmandate:</span>
+                    <span id="overhang-seats" class="summary-value">0</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Ausgleichsmandate:</span>
+                    <span id="compensation-seats" class="summary-value">0</span>
+                </div>
+            </div>
+
+            <table id="results-table" class="results-table">
+                <thead>
+                    <tr>
+                        <th>Partei</th>
+                        <th>Zweitstimmen (%)</th>
+                        <th>Direktmandate</th>
+                        <th>Gesamtsitze</th>
+                        <th>davon Überhang</th>
+                        <th>davon Ausgleich</th>
+                    </tr>
+                </thead>
+                <tbody id="results-tbody">
+                    <!-- Results will be added here -->
+                </tbody>
+            </table>
+
+            <div class="coalition-container">
+                <h3>Koalitionsrechner</h3>
+                <div class="coalition-selector">
+                    <p>Wählen Sie die Parteien für Ihre Koalition:</p>
+                    <div id="coalition-checkboxes" class="coalition-checkboxes">
+                        <!-- Checkboxes will be added here -->
+                    </div>
+                    <button id="calculate-coalition-btn" class="btn-primary">Koalition berechnen</button>
+                </div>
+                <div id="coalition-results" class="coalition-results">
+                    <!-- Coalition results will be shown here -->
+                </div>
+            </div>
+        </div>
+
+        <div class="prognose-section">
+            <h2>Wahlkreis-Details</h2>
+            <div class="info-box">
+                <p><strong>Hochrechnung:</strong> Die Direktmandate werden basierend auf den Wahlergebnissen 2021 und Ihren Umfragewerten berechnet.</p>
+            </div>
+            <div class="warning-box">
+                <p><strong>Achtung:</strong> Das Skript kann keine lokalen Effekte oder Kandidateneffekte berücksichtigen. Die Ergebnisse der Projektion können daher in einzelnen Wahlkreisen (deutlich) abweichen.</p>
+            </div>
+            
+            <div class="prognose-controls">
+                <div class="method-description" id="method-description">
+                    <p><strong>Uniform Swing:</strong> Die landesweite Veränderung wird gleichmäßig auf alle Wahlkreise angewendet.<br>
+                    <em>Prognose = Ergebnis 2021 + (Umfrage - Landesergebnis 2021)</em></p>
+                </div>
+                <button id="calculate-prognose-btn" class="btn-primary">Wahlkreis-Details anzeigen</button>
+            </div>
+
+            <div id="prognose-summary" class="prognose-summary hidden">
+                <h3>Direktmandate-Verteilung</h3>
+                <div id="prognose-mandate-overview" class="mandate-overview">
+                    <!-- Übersicht wird hier eingefügt -->
+                </div>
+                <div class="prognose-changes">
+                    <span id="prognose-changes-text"></span>
+                </div>
+            </div>
+
+            <div id="wahlkreis-details" class="wahlkreis-details hidden">
+                <div class="wahlkreis-header">
+                    <h3>Alle 70 Wahlkreise</h3>
+                    <button id="toggle-wahlkreise-btn" class="btn-secondary">Details anzeigen ▼</button>
+                </div>
+                <div id="wahlkreis-list" class="wahlkreis-list hidden">
+                    <!-- Wahlkreis-Liste wird hier eingefügt -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Wahlabend Section -->
+        <div class="wahlabend-section hidden" id="wahlabend-section">
+            <div class="wahlabend-login" id="wahlabend-login">
+                <h2>Wahlabend</h2>
+                <p class="wahlabend-description">Zugang zu Live-Wahlergebnissen aus allen Wahlkreisen</p>
+                <div class="wahlabend-password-box">
+                    <input type="password" id="wahlabend-password" placeholder="Passwort eingeben" autocomplete="off">
+                    <button class="btn-primary" onclick="checkWahlabendPassword()">Zugang</button>
+                </div>
+                <div id="wahlabend-password-error" class="wahlabend-error hidden"></div>
+            </div>
+            
+            <div class="wahlabend-content hidden" id="wahlabend-content">
+                <h2>Live-Wahlergebnisse</h2>
+                
+                <div class="wahlabend-settings">
+                    <div class="setting-item">
+                        <label>
+                            <input type="checkbox" id="use-dummy-data" checked onchange="toggleDummyData()">
+                            Dummy-Daten verwenden (für Tests)
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <button class="btn-primary" onclick="fetchWahlergebnisse()" id="fetch-results-btn">Daten abrufen</button>
+                        <button class="btn-secondary" onclick="toggleWahlabendSection()">Schließen</button>
+                    </div>
+                    <div id="wahlabend-status" class="wahlabend-status"></div>
+                </div>
+
+                <div id="wahlabend-results" class="wahlabend-results hidden">
+                    <div class="wahlabend-summary">
+                        <h3>Direktmandate-Übersicht</h3>
+                        <div id="wahlabend-mandate-overview" class="mandate-overview">
+                            <!-- Wird dynamisch gefüllt -->
+                        </div>
+                    </div>
+
+                    <div class="wahlabend-details">
+                        <h3>Alle 70 Wahlkreise</h3>
+                        <div class="wahlabend-table-container">
+                            <table id="wahlabend-table" class="wahlabend-table">
+                                <thead>
+                                    <tr>
+                                        <th>WK</th>
+                                        <th>Name</th>
+                                        <th>Gewinner</th>
+                                        <th>Auszählung</th>
+                                        <th>Erststimmen</th>
+                                        <th>Vorsprung</th>
+                                        <th>Wahrscheinlichkeit</th>
+                                        <th>Schnellmeldungen</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="wahlabend-tbody">
+                                    <!-- Wird dynamisch gefüllt -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Wahlkreis Detail Modal -->
+    <div id="wahlkreis-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-wahlkreis-name">Wahlkreis</h3>
+                <button class="modal-close" onclick="closeWahlkreisModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="comparison-container">
+                    <div class="comparison-column">
+                        <h4>Ergebnis 2021</h4>
+                        <div id="modal-ergebnis-2021" class="ergebnis-bars">
+                            <!-- 2021 Ergebnisse -->
+                        </div>
+                        <div class="gewinner-info">
+                            <strong>Gewinner:</strong> <span id="modal-gewinner-2021"></span>
+                        </div>
+                    </div>
+                    <div class="comparison-column">
+                        <h4>Prognose 2026</h4>
+                        <div class="modal-stimmen-toggle">
+                            <button type="button" class="toggle-btn active" data-mode="erst" id="modal-toggle-erst">Erststimme</button>
+                            <button type="button" class="toggle-btn" data-mode="zweit" id="modal-toggle-zweit">Zweitstimme</button>
+                        </div>
+                        <div id="modal-ergebnis-2026" class="ergebnis-bars">
+                            <!-- 2026 Prognose -->
+                        </div>
+                        <div class="gewinner-info">
+                            <strong>Gewinner:</strong> <span id="modal-gewinner-2026"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer with Wahlabend Button -->
+    <footer class="page-footer">
+        <a href="index.html" class="wahlabend-toggle" style="text-decoration:none">← Zurück zum Live-Wahlabend</a>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
