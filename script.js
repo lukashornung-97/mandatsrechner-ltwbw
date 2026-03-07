@@ -238,6 +238,7 @@ const LANDESERGEBNIS_2016 = {
 let parties = [];
 let hasCalculated = false; // Wurden Direktmandate schon berechnet?
 let lastSeatResult = null; // { partyNameToSeats: {}, totalSeats: 0 } für Anzeige in Eingabetabelle
+let autoCalculateDebounceTimer = null; // Debounce für Prozent-Eingabe (verhindert Re-Render bei jedem Tastendruck)
 
 // Initialize default parties with current polling values
 function initParties() {
@@ -298,7 +299,8 @@ function renderPartyTable() {
                        data-index="${index}" 
                        data-field="percentage"
                        placeholder="0.0"
-                       oninput="validatePercentageInput(this)">
+                       oninput="validatePercentageInput(this)"
+                       onblur="flushPercentageCalculation()">
             </td>
             ${direktmandateCell}
             <td class="party-seats-cell" id="party-seats-${index}">${gesamtSitze}</td>
@@ -379,8 +381,22 @@ function validatePercentageInput(input) {
     parties[index].percentage = Math.max(0, value);
     updateValidationMessage();
     
-    // Automatisch neu berechnen bei manueller Änderung der Umfragewerte
-    autoCalculateDirektmandate();
+    // Debounced: Berechnung erst nach kurzer Pause, damit Input nicht bei jedem Tastendruck
+    // neu gerendert wird (Mobil: Tastatur bleibt, PC: Löschen/Eingeben funktioniert)
+    if (autoCalculateDebounceTimer) clearTimeout(autoCalculateDebounceTimer);
+    autoCalculateDebounceTimer = setTimeout(() => {
+        autoCalculateDebounceTimer = null;
+        autoCalculateDirektmandate();
+    }, 400);
+}
+
+// Sofort berechnen beim Verlassen des Feldes (z.B. Tab/Blur)
+function flushPercentageCalculation() {
+    if (autoCalculateDebounceTimer) {
+        clearTimeout(autoCalculateDebounceTimer);
+        autoCalculateDebounceTimer = null;
+        autoCalculateDirektmandate();
+    }
 }
 
 // Validate direct mandate input in real-time
@@ -1051,10 +1067,22 @@ function autoCalculateDirektmandate() {
         party.directMandates = mandateCount[party.name] || 0;
     });
     
+    const wasCalculated = hasCalculated;
     hasCalculated = true;
     
-    // Tabelle neu rendern mit editierbaren Feldern
-    renderPartyTable();
+    // Nur beim ersten Mal vollständig rendern (zeigt Direktmandate-Inputs).
+    // Bei Folge-Eingaben NICHT neu rendern – sonst verliert das Prozent-Input den Fokus
+    // (Mobil: Tastatur verschwindet, PC: Wert wird auf 0 zurückgesetzt beim Löschen).
+    if (!wasCalculated) {
+        renderPartyTable();
+    } else {
+        // Nur Sitzzahlen und Direktmandate-Felder aktualisieren, Inputs bleiben erhalten
+        updatePartyTableSeats();
+        document.querySelectorAll('#party-table input[data-field="directMandates"]').forEach(input => {
+            const idx = parseInt(input.dataset.index);
+            if (parties[idx]) input.value = parties[idx].directMandates;
+        });
+    }
     updateValidationMessage();
     
     // Sitzverteilung direkt berechnen
@@ -1454,6 +1482,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Make functions globally available for inline onclick handlers
     window.removeParty = removeParty;
     window.validatePercentageInput = validatePercentageInput;
+    window.flushPercentageCalculation = flushPercentageCalculation;
     window.validateDirectMandateInput = validateDirectMandateInput;
     window.closeWahlkreisModal = closeWahlkreisModal;
     window.openWahlkreisModal = openWahlkreisModal;
