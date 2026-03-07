@@ -798,24 +798,6 @@ function setStatus(msg, type) {
     }
 }
 
-async function loadFromFile() {
-    const fileInput = document.getElementById('csv-file');
-    if (!fileInput.files || fileInput.files.length === 0) {
-        setStatus('Bitte zuerst eine CSV-Datei auswählen.', 'error');
-        return;
-    }
-
-    const file = fileInput.files[0];
-    setStatus(`Lade ${file.name} (${(file.size / 1024 / 1024).toFixed(1)} MB) …`, 'info');
-
-    try {
-        const text = await file.text();
-        processAndDisplay(text, `Datei: ${file.name}`);
-    } catch (err) {
-        setStatus(`Fehler beim Lesen der Datei: ${err.message}`, 'error');
-    }
-}
-
 // Eigener Cloudflare Worker als CORS-Proxy (cors-proxy/ im Repo)
 const CORS_PROXY_URL = 'https://ltw-cors-proxy.lukas-hornung.workers.dev';
 
@@ -880,47 +862,29 @@ function processAndDisplay(csvText, source) {
 // AUTO-REFRESH
 // ============================================================
 
-function toggleAutoRefresh() {
-    const checkbox = document.getElementById('auto-refresh');
-    if (checkbox.checked) {
-        startAutoRefresh();
-    } else {
-        stopAutoRefresh();
-    }
-}
+const REFRESH_SECONDS = 30;
 
 function startAutoRefresh() {
-    const seconds = parseInt(document.getElementById('refresh-interval').value) || 60;
     stopAutoRefresh();
-    scheduleNext(seconds);
+    scheduleNext(REFRESH_SECONDS);
 }
 
 function stopAutoRefresh() {
     if (autoRefreshTimer) { clearTimeout(autoRefreshTimer);  autoRefreshTimer = null; }
     if (countdownTimer)   { clearInterval(countdownTimer);   countdownTimer   = null; }
-    document.getElementById('refresh-countdown').classList.add('hidden');
 }
 
 function scheduleNext(seconds) {
     let remaining = seconds;
-    const el = document.getElementById('refresh-countdown');
-    el.classList.remove('hidden');
-    el.textContent = `Nächster Abruf in ${remaining}s`;
 
     countdownTimer = setInterval(() => {
         remaining--;
-        el.textContent = `Nächster Abruf in ${remaining}s`;
         if (remaining <= 0) { clearInterval(countdownTimer); countdownTimer = null; }
     }, 1000);
 
     autoRefreshTimer = setTimeout(async () => {
-        const url = document.getElementById('csv-url').value.trim();
-        if (url) {
-            await loadFromUrl();
-        }
-        if (document.getElementById('auto-refresh').checked) {
-            scheduleNext(parseInt(document.getElementById('refresh-interval').value) || 60);
-        }
+        await loadFromUrl();
+        scheduleNext(REFRESH_SECONDS);
     }, seconds * 1000);
 }
 
@@ -933,7 +897,5 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!urlInput.value.trim()) {
         urlInput.value = DEFAULT_CSV_URL;
     }
-    document.getElementById('refresh-interval').value = 30;
-    document.getElementById('auto-refresh').checked = true;
     loadFromUrl().then(() => startAutoRefresh());
 });

@@ -14,32 +14,12 @@
             <p class="beta-notice">Beta-Version, ohne Gewähr der Korrektheit. Feedback: <a href="mailto:lukhornung@gmail.com">lukhornung@gmail.com</a></p>
         </header>
 
-        <!-- Datenquelle -->
-        <div class="wa-datasource">
-            <h3 style="margin:0 0 14px 0; color:#667eea">Datenquelle</h3>
-            <div class="wa-input-row">
-                <div class="wa-input-group">
-                    <label for="csv-file">CSV-Datei hochladen:</label>
-                    <input type="file" id="csv-file" accept=".csv">
-                    <button class="btn-primary" onclick="loadFromFile()">Laden</button>
-                </div>
-                <div class="wa-input-group wa-url-group">
-                    <label for="csv-url">Oder URL eingeben:</label>
-                    <input type="text" id="csv-url" value="https://wahlen.statistik-bw.de/ltw26/ltw26-ergebnisse.csv" placeholder="https://wahlen.statistik-bw.de/ltw26/..." class="wa-url-input">
-                    <button class="btn-primary" onclick="loadFromUrl()">Abrufen</button>
-                </div>
-            </div>
-            <div class="wa-refresh-row">
-                <label>
-                    <input type="checkbox" id="auto-refresh" onchange="toggleAutoRefresh()">
-                    Auto-Refresh alle
-                </label>
-                <input type="number" id="refresh-interval" value="60" min="10" max="600" class="wa-interval-input">
-                <span>Sekunden</span>
-                <span id="refresh-countdown" class="wa-countdown hidden"></span>
-            </div>
-            <div id="wa-status" class="wahlabend-status hidden"></div>
-        </div>
+        <!-- Versteckte Felder für die interne Logik -->
+        <input type="hidden" id="csv-url" value="https://wahlen.statistik-bw.de/ltw26/ltw26-ergebnisse.csv">
+        <input type="hidden" id="auto-refresh" checked>
+        <input type="hidden" id="refresh-interval" value="30">
+        <span id="refresh-countdown" class="wa-countdown hidden"></span>
+        <div id="wa-status" class="wahlabend-status hidden"></div>
 
         <!-- Auszählungsstand -->
         <div id="wa-auszaehlungsstand" class="wa-stand hidden">
