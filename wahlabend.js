@@ -509,9 +509,9 @@ function displaySitzverteilungUnified(sitzverteilung, prognose) {
     const sv   = sitzverteilung;
     const prog = prognose && prognose.prognoseSitzverteilung ? prognose.prognoseSitzverteilung : null;
 
-    if (!sv && !prog) { section.classList.add('hidden'); return; }
     section.classList.remove('hidden');
 
+    const noData     = !sv && !prog;
     const isComplete = sv && (!prog || sv.totalSeats === prog.totalSeats);
     const hasBoth    = sv && prog && !isComplete;
 
@@ -519,7 +519,9 @@ function displaySitzverteilungUnified(sitzverteilung, prognose) {
     legend.classList.toggle('hidden', !hasBoth);
 
     // Info-Text
-    if (isComplete) {
+    if (noData) {
+        infoBox.innerHTML = '<p>Noch keine Wahlbezirke ausgezählt. Übersicht zeigt alle Parteien mit 0 Sitzen.</p>';
+    } else if (isComplete) {
         infoBox.innerHTML = '<p>Berechnet nach Sainte-Laguë/Schepers auf Basis der Zweitstimmen.</p>';
     } else if (hasBoth) {
         infoBox.innerHTML = '<p>Solider Balken = aktueller Stand. Schraffierter Balken = Hochrechnung auf 100% (linear). Die Hochrechnung wird genauer, je mehr Wahlbezirke ausgezählt sind.</p>';
@@ -528,28 +530,49 @@ function displaySitzverteilungUnified(sitzverteilung, prognose) {
     }
 
     // Zusammenfassung
-    const best = prog || sv;
-    const label = hasBoth ? ' (hochgerechnet)' : '';
-    const unterHuerde = best.unterHuerde || [];
-    summary.innerHTML = `
-        <span><strong>${best.totalSeats}</strong> Sitze${label}</span>
-        <span>Überhang: <strong>${best.totalOverhang}</strong></span>
-        <span>Ausgleich: <strong>${best.totalCompensation}</strong></span>
-        <span>Mehrheit: <strong>${Math.floor(best.totalSeats / 2) + 1}</strong></span>
-        <span class="wa-sv-huerde">${unterHuerde.length > 0 ? `Unter 5%: ${unterHuerde.join(', ')}` : 'Alle über 5%'}</span>
-    `;
+    if (noData) {
+        summary.innerHTML = `
+            <span><strong>0</strong> Sitze</span>
+            <span>Überhang: <strong>0</strong></span>
+            <span>Ausgleich: <strong>0</strong></span>
+            <span>Mehrheit: <strong>${Math.floor(MIN_PARLIAMENT_SIZE / 2) + 1}</strong> (bei ${MIN_PARLIAMENT_SIZE} Sitzen)</span>
+        `;
+    } else {
+        const best = prog || sv;
+        const label = hasBoth ? ' (hochgerechnet)' : '';
+        const unterHuerde = best.unterHuerde || [];
+        summary.innerHTML = `
+            <span><strong>${best.totalSeats}</strong> Sitze${label}</span>
+            <span>Überhang: <strong>${best.totalOverhang}</strong></span>
+            <span>Ausgleich: <strong>${best.totalCompensation}</strong></span>
+            <span>Mehrheit: <strong>${Math.floor(best.totalSeats / 2) + 1}</strong></span>
+            <span class="wa-sv-huerde">${unterHuerde.length > 0 ? `Unter 5%: ${unterHuerde.join(', ')}` : 'Alle über 5%'}</span>
+        `;
+    }
 
     // Balkendiagramm
     chart.innerHTML = '';
 
     // Parteinamen vereinigen (alle aus sv und prog)
     const partyMap = new Map();
-    if (sv) sv.parties.forEach(p  => partyMap.set(p.partei, { actual: p, proj: null }));
-    if (prog) prog.parties.forEach(p => {
-        const entry = partyMap.get(p.partei) || { actual: null, proj: null };
-        entry.proj = p;
-        partyMap.set(p.partei, entry);
-    });
+
+    if (noData) {
+        // Alle bekannten Parteien mit 0 Sitzen anzeigen
+        const mainParties = ['CDU', 'GRÜNE', 'SPD', 'AfD', 'FDP', 'BSW', 'FREIE WÄHLER', 'Die Linke', 'Volt'];
+        mainParties.forEach(partei => {
+            partyMap.set(partei, {
+                actual: { partei, total: 0, direktmandate: 0, prozent: 0, ueberhang: 0, ausgleich: 0, stimmen: 0 },
+                proj: null,
+            });
+        });
+    } else {
+        if (sv) sv.parties.forEach(p  => partyMap.set(p.partei, { actual: p, proj: null }));
+        if (prog) prog.parties.forEach(p => {
+            const entry = partyMap.get(p.partei) || { actual: null, proj: null };
+            entry.proj = p;
+            partyMap.set(p.partei, entry);
+        });
+    }
 
     const sorted = [...partyMap.entries()].sort((a, b) => {
         const bTotal = (b[1].proj || b[1].actual).total;
@@ -628,7 +651,7 @@ function displaySitzverteilungUnified(sitzverteilung, prognose) {
         });
         dmEl.innerHTML = `<strong>Direktmandate:</strong> ` + parts.join('<span class="wa-dm-sep">,&nbsp;&nbsp;</span>');
     } else {
-        dmEl.innerHTML = '';
+        dmEl.innerHTML = '<strong>Direktmandate:</strong> 0 / 70 bestätigt';
     }
 }
 
