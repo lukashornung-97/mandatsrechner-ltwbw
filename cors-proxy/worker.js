@@ -6,6 +6,11 @@ const ALLOWED_ORIGINS = [
 
 const ALLOWED_URL_PATTERN = /^https:\/\/wahlen\.statistik-bw\.de\//;
 
+// Wie lange eine Antwort gecacht wird (in Sekunden).
+// Alle Requests innerhalb dieses Fensters erhalten die gecachte Version
+// → drastisch weniger Upstream-Fetches & schnellere Antworten.
+const CACHE_TTL_SECONDS = 30;
+
 function corsHeaders(origin) {
   return {
     'Access-Control-Allow-Origin': origin || '*',
@@ -47,18 +52,48 @@ export default {
       return new Response('Origin not allowed', { status: 403 });
     }
 
+    // Cache-Key basiert nur auf der Ziel-URL (nicht auf Origin),
+    // damit alle User denselben Cache-Eintrag nutzen.
+    const cache = caches.default;
+    const cacheKey = new Request(`https://cache-key/${target}`, { method: 'GET' });
+
+    const cached = await cache.match(cacheKey);
+    if (cached) {
+      const headers = new Headers(cached.headers);
+      Object.entries(corsHeaders(origin)).forEach(([k, v]) => headers.set(k, v));
+      headers.set('X-Cache', 'HIT');
+      return new Response(cached.body, {
+        status: cached.status,
+        statusText: cached.statusText,
+        headers,
+      });
+    }
+
     try {
       const resp = await fetch(target, {
         headers: { 'User-Agent': 'LTW-CORS-Proxy/1.0' },
       });
 
-      const headers = new Headers(resp.headers);
-      Object.entries(corsHeaders(origin)).forEach(([k, v]) => headers.set(k, v));
+      const body = await resp.arrayBuffer();
 
-      return new Response(resp.body, {
+      const cacheHeaders = new Headers(resp.headers);
+      cacheHeaders.set('Cache-Control', `public, max-age=${CACHE_TTL_SECONDS}`);
+
+      const cacheResp = new Response(body, {
         status: resp.status,
         statusText: resp.statusText,
-        headers,
+        headers: cacheHeaders,
+      });
+      await cache.put(cacheKey, cacheResp);
+
+      const clientHeaders = new Headers(cacheHeaders);
+      Object.entries(corsHeaders(origin)).forEach(([k, v]) => clientHeaders.set(k, v));
+      clientHeaders.set('X-Cache', 'MISS');
+
+      return new Response(body, {
+        status: resp.status,
+        statusText: resp.statusText,
+        headers: clientHeaders,
       });
     } catch (err) {
       return new Response(`Proxy error: ${err.message}`, {
