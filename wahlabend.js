@@ -117,6 +117,7 @@ const DEFAULT_CSV_URL = 'https://wahlen.statistik-bw.de/ltw26/ltw26-ergebnisse.c
 let currentSitzverteilung = null;
 let autoRefreshTimer      = null;
 let countdownTimer        = null;
+let lastParsedRows        = null;
 
 // ============================================================
 // CSV-PARSING
@@ -664,9 +665,11 @@ function displayWahlkreise(direktmandate, prognose) {
         const wk   = direktmandate.ergebnisse[wkNr];
         const prog = prognose && prognose.progPerWK ? prognose.progPerWK[wkNr] : null;
         const row  = document.createElement('tr');
+        row.classList.add('wk-clickable');
+        row.addEventListener('click', () => showWahlkreisDetail(wkNr));
 
         if (!wk) {
-            row.className = 'pending';
+            row.classList.add('pending');
             row.innerHTML = `
                 <td class="wk-id">${wkNr}</td>
                 <td class="wk-name">${WK_NAMEN[wkNr] || `WK ${wkNr}`}</td>
@@ -784,6 +787,171 @@ function berechneKoalition() {
 }
 
 // ============================================================
+// WAHLKREIS-DETAIL-MODAL
+// ============================================================
+
+function showWahlkreisDetail(wkNr) {
+    if (!lastParsedRows) return;
+
+    const wkRow = lastParsedRows.find(r => r['Gebietsart'] === 'WAHLKREIS' && parseInt(r['Wahlkreisnummer']) === wkNr);
+    const gemeindeRows = lastParsedRows.filter(r => r['Gebietsart'] === 'GEMEINDE' && parseInt(r['Wahlkreisnummer']) === wkNr);
+
+    const wkName = wkRow ? (wkRow['Wahlkreisname'] || WK_NAMEN[wkNr]) : WK_NAMEN[wkNr] || `WK ${wkNr}`;
+
+    document.getElementById('wk-detail-title').textContent = `WK ${wkNr} – ${wkName}`;
+    const body = document.getElementById('wk-detail-body');
+
+    if (!wkRow) {
+        body.innerHTML = '<p class="wa-no-data">Noch keine Daten für diesen Wahlkreis vorhanden.</p>';
+        document.getElementById('wk-detail-modal').classList.remove('hidden');
+        return;
+    }
+
+    const gemeldet = parseInt(wkRow['gemeldete Wahlbezirke'] || '0') || 0;
+    const gesamt   = parseInt(wkRow['Anzahl Wahlbezirke'] || '0') || 0;
+    const pct      = gesamt > 0 ? (gemeldet / gesamt * 100) : 0;
+
+    const wahlberechtigte = parseInt(wkRow['Wahlberechtigte gesamt (A)'] || '0') || 0;
+    const waehler         = parseInt(wkRow['Waehler gesamt (B)'] || '0') || 0;
+    const wahlbeteiligung = wahlberechtigte > 0 ? (waehler / wahlberechtigte * 100) : 0;
+
+    const erststimmenGueltig  = parseInt(wkRow['Erststimmen gueltige (D)'] || '0') || 0;
+    const zweitstimmenGueltig = parseInt(wkRow['Zweitstimmen gueltige (F)'] || '0') || 0;
+
+    let html = '';
+
+    // Auszählungsstand
+    html += `
+        <div class="wk-detail-stand">
+            <div class="wk-detail-stand-row">
+                <span class="wk-detail-label">Auszählung:</span>
+                <strong>${gemeldet} / ${gesamt}</strong> Wahlbezirke (${pct.toFixed(1).replace('.', ',')}%)
+            </div>
+            <div class="wk-detail-progress">
+                <div class="wk-detail-progress-fill" style="width:${Math.min(100, pct)}%"></div>
+            </div>
+            <div class="wk-detail-stats">
+                <span>Wahlberechtigte: <strong>${wahlberechtigte.toLocaleString('de-DE')}</strong></span>
+                <span>Wähler: <strong>${waehler.toLocaleString('de-DE')}</strong></span>
+                <span>Wahlbeteiligung: <strong>${wahlbeteiligung.toFixed(1).replace('.', ',')}%</strong></span>
+            </div>
+        </div>
+    `;
+
+    // Erststimmen
+    html += renderStimmenChart('Erststimmen', ERSTSTIMMEN_MAPPING, wkRow, erststimmenGueltig);
+
+    // Zweitstimmen
+    html += renderStimmenChart('Zweitstimmen', ZWEITSTIMMEN_MAPPING, wkRow, zweitstimmenGueltig);
+
+    // Gemeinde-Tabelle
+    if (gemeindeRows.length > 0) {
+        html += '<h4 class="wk-detail-h4">Gemeinden im Wahlkreis</h4>';
+        html += '<div class="wk-detail-gemeinde-scroll"><table class="wk-detail-gemeinde-table">';
+        html += `<thead><tr>
+            <th>Gemeinde</th>
+            <th class="text-right">Ausgezählt</th>
+            <th class="text-right">Wahlbet.</th>
+            <th>Stärkste Partei (Erst.)</th>
+            <th>Stärkste Partei (Zweit.)</th>
+        </tr></thead><tbody>`;
+
+        const sortedGemeinden = [...gemeindeRows].sort((a, b) => {
+            const nameA = a['Gemeindename'] || a['Gebietsname'] || '';
+            const nameB = b['Gemeindename'] || b['Gebietsname'] || '';
+            return nameA.localeCompare(nameB, 'de');
+        });
+
+        sortedGemeinden.forEach(g => {
+            const gName      = g['Gemeindename'] || g['Gebietsname'] || '–';
+            const gGemeldet  = parseInt(g['gemeldete Wahlbezirke'] || '0') || 0;
+            const gGesamt    = parseInt(g['Anzahl Wahlbezirke'] || '0') || 0;
+            const gPct       = gGesamt > 0 ? (gGemeldet / gGesamt * 100) : 0;
+            const gWahlber   = parseInt(g['Wahlberechtigte gesamt (A)'] || '0') || 0;
+            const gWaehler   = parseInt(g['Waehler gesamt (B)'] || '0') || 0;
+            const gBet       = gWahlber > 0 ? (gWaehler / gWahlber * 100) : 0;
+
+            const erstWinner  = findStaerkstePartei(g, ERSTSTIMMEN_MAPPING);
+            const zweitWinner = findStaerkstePartei(g, ZWEITSTIMMEN_MAPPING);
+
+            const isComplete = gGemeldet >= gGesamt && gGesamt > 0;
+            const rowClass = isComplete ? 'gemeinde-complete' : (gGemeldet > 0 ? 'gemeinde-partial' : 'gemeinde-pending');
+
+            html += `<tr class="${rowClass}">
+                <td class="gemeinde-name">${gName}</td>
+                <td class="text-right">${gGemeldet}/${gGesamt} <span class="gemeinde-pct">(${gPct.toFixed(0)}%)</span></td>
+                <td class="text-right">${gBet > 0 ? gBet.toFixed(1).replace('.', ',') + '%' : '–'}</td>
+                <td>${erstWinner ? `<span class="wk-winner" style="${partyBadgeStyle(erstWinner.partei)}">${erstWinner.partei}</span> <span class="gemeinde-anteil">${erstWinner.anteil}%</span>` : '–'}</td>
+                <td>${zweitWinner ? `<span class="wk-winner" style="${partyBadgeStyle(zweitWinner.partei)}">${zweitWinner.partei}</span> <span class="gemeinde-anteil">${zweitWinner.anteil}%</span>` : '–'}</td>
+            </tr>`;
+        });
+
+        html += '</tbody></table></div>';
+    }
+
+    body.innerHTML = html;
+    document.getElementById('wk-detail-modal').classList.remove('hidden');
+}
+
+function renderStimmenChart(label, mapping, row, gueltigGesamt) {
+    const entries = [];
+    Object.entries(mapping).forEach(([col, partei]) => {
+        const v = parseInt(row[col] || '0') || 0;
+        if (v > 0) entries.push({ partei, stimmen: v });
+    });
+
+    entries.sort((a, b) => b.stimmen - a.stimmen);
+    const maxVal = entries.length > 0 ? entries[0].stimmen : 1;
+
+    let html = `<h4 class="wk-detail-h4">${label} <span class="wk-detail-total">(${gueltigGesamt.toLocaleString('de-DE')} gültige)</span></h4>`;
+
+    if (entries.length === 0) {
+        html += '<p class="wa-no-data">Noch keine Stimmen ausgezählt.</p>';
+        return html;
+    }
+
+    html += '<div class="wk-detail-bars">';
+    entries.forEach(e => {
+        const pct    = gueltigGesamt > 0 ? (e.stimmen / gueltigGesamt * 100) : 0;
+        const barW   = maxVal > 0 ? (e.stimmen / maxVal * 100) : 0;
+        const cfg    = PARTY_CONFIG[e.partei] || { color: '#888888', textColor: 'white' };
+
+        html += `
+            <div class="wk-detail-bar-row">
+                <span class="wk-detail-bar-party">${e.partei}</span>
+                <div class="wk-detail-bar-track">
+                    <div class="wk-detail-bar-fill" style="width:${barW}%; background:${cfg.color}"></div>
+                </div>
+                <span class="wk-detail-bar-val">${pct.toFixed(1).replace('.', ',')}%</span>
+                <span class="wk-detail-bar-abs">${e.stimmen.toLocaleString('de-DE')}</span>
+            </div>
+        `;
+    });
+    html += '</div>';
+
+    return html;
+}
+
+function findStaerkstePartei(row, mapping) {
+    let maxV = 0, winner = null, total = 0;
+    Object.entries(mapping).forEach(([col, partei]) => {
+        const v = parseInt(row[col] || '0') || 0;
+        total += v;
+        if (v > maxV) { maxV = v; winner = partei; }
+    });
+    if (!winner || maxV === 0) return null;
+    return { partei: winner, anteil: (total > 0 ? (maxV / total * 100).toFixed(1).replace('.', ',') : '0') };
+}
+
+function closeWkDetail() {
+    document.getElementById('wk-detail-modal').classList.add('hidden');
+}
+
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeWkDetail();
+});
+
+// ============================================================
 // DATEN LADEN
 // ============================================================
 
@@ -840,6 +1008,7 @@ function processAndDisplay(csvText, source) {
         const rows = parseCSV(csvText);
         if (rows.length === 0) throw new Error('CSV enthält keine Datenzeilen.');
 
+        lastParsedRows = rows;
         const data = processData(rows);
         displayResults(data);
 

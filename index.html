@@ -90,6 +90,17 @@
         </div>
     </div>
 
+    <!-- Wahlkreis-Detail-Modal -->
+    <div id="wk-detail-modal" class="modal hidden" onclick="if(event.target===this)closeWkDetail()">
+        <div class="modal-content wk-detail-modal-content">
+            <div class="modal-header">
+                <h3 id="wk-detail-title">Wahlkreis</h3>
+                <button class="modal-close" onclick="closeWkDetail()">&times;</button>
+            </div>
+            <div class="modal-body" id="wk-detail-body"></div>
+        </div>
+    </div>
+
     <footer class="page-footer">
         <a href="rechner.html" class="wahlabend-toggle" style="text-decoration:none">← Zum Sitzverteilungs-Rechner (manuelle Berechnung)</a>
     </footer>
